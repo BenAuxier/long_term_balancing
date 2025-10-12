@@ -164,7 +164,15 @@ def extract_align_seq_from_dict(bam_path, position_info):
     align_info_B = extract_align_seq(bam_path, seq, start, end)
     return align_info_B
 
-def not_align_seq(align_info, assembly_path):
+def find_aligned_assembly(align_info):
+    aligned_genome = []
+    for seq_info in align_info["seq_info"]:
+        ID = seq_info["Genome_accession"]
+        aligned_genome.append(ID)
+
+    return aligned_genome
+
+def find_not_aligned_assembly(aligned_genome,align_info, assembly_path):
     """
     Find the genome assemblies that are not aligned to one genomic position.
     :param align_info: The output of extract_align_seq, with the list (align_info["seq_info"])
@@ -173,21 +181,17 @@ def not_align_seq(align_info, assembly_path):
     A list consisting of all genome assemblies that were used in the alignment.
     :return: not_align_list, A list including all uncovered genome assemblies at the genomic position.
     """
-    align_genome = []
-    for seq_info in align_info["seq_info"]:
-        ID = seq_info["Genome_accession"]
-        align_genome.append(ID)
 
     #load the list including all genome assemblies
     with open(assembly_path, "r", encoding="utf-8") as f:
         all_genome = [line.strip() for line in f]
     #print(all_genome)
-    not_align_list = list(set(all_genome) - set(align_genome))
+    not_align_list = list(set(all_genome) - set(aligned_genome))
     position = align_info["pos_info"]
     print(f"Position on reference genome: sequence ID: {position['seq']}, "
           f"start position: {position['start']}, "
           f"end position: {position['end']}.\n"
-          f"Overall {len(all_genome)} assemblies, aligned {len(align_genome)} assemblies, "
+          f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
           f"not aligned {len(not_align_list)} assemblies.")
     return not_align_list
 #######################################
@@ -292,6 +296,89 @@ def extract_candidate_position(filtered_rows):
         candidate_data[row["Name"]] = row_data
     return candidate_data
 
+def extract_candidate_position_list(filtered_rows):
+    """
+    Extract the necessary position information from the filtered data.
+    :param filtered_rows: A list including each rows as a dictionary.
+    :return: candidate_data, a dictionary, including each mRNA candidates and its information as key-value pairs.
+    """
+    candidate_data_list = {}
+    for row in filtered_rows:
+        if not row["seqid"] in candidate_data_list.keys():
+            candidate_data_list[row["seqid"]] = []
+
+        row_data = {
+            "seqid": row["seqid"],
+            "start": row["start"],
+            "end": row["end"],
+            "depth": row["depth"],
+            "id": row["Name"],
+            "locus_tag": row["locus_tag"]
+        }
+        candidate_data_list[row["seqid"]].append(row_data)
+    return candidate_data_list
+
+def mix_candidate_position(candidate_data_list, annotation_dict):
+    candidate_data_mix = {}
+    for seq, candidates in candidate_data_list.items():
+        annotation_seq = annotation_dict[seq]
+        candidate_data_mix[seq] = []
+        mixed_data = {}
+
+        for i in range(0,len(candidates)):
+            candidate_i = candidates[i]
+            id_i = candidate_i["id"]
+            annotation_candidate_i = annotation_seq[id_i]
+
+            if mixed_data == {}: # if nothing in mixed data, select the current annotation
+
+                # if there is not a mixed data, import this annotation as the mixed data
+                mixed_data = {
+                    "seqid": seq,
+                    "region_name": id_i,
+                    "start_gene": id_i,
+                    "start": annotation_candidate_i["start"],
+                    "end": annotation_candidate_i["end"],
+                    "rank": annotation_candidate_i["rank"]
+                }
+
+            # Then there is already a mixed data from i-n to i
+            start_i = mixed_data["start"]
+            rank_i = mixed_data["rank"]
+
+            # if there is only one candidate in the genomic sequence
+            if len(candidates) == 1:
+                candidate_data_mix[seq].append(mixed_data)
+                break
+
+            # candidate i + 1
+            candidate_i_1 = candidates[i+1]
+            id_i_1 = candidate_i_1["id"]
+            annotation_candidate_i_1 = annotation_seq[id_i_1]
+            rank_i_1 = annotation_candidate_i_1["rank"]
+
+            #compare rank of i+1 to i
+            if abs(rank_i_1-rank_i) <= 2: # mix
+                mixed_data_new = {
+                    "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
+                    "start_gene": mixed_data["start_gene"],
+                    "start": start_i,
+                    "end": annotation_candidate_i_1["end"],
+                    "rank": rank_i_1
+                }
+                mixed_data = mixed_data_new
+
+            else:
+                candidate_data_mix[seq].append(mixed_data)
+                print(mixed_data["region_name"])
+                mixed_data = {}
+
+            if i == len(candidates)-2:
+                break
+
+    return candidate_data_mix
+
+
 ####################################
 #Select up and downstream positions
 def read_gtf(gtf_path, keep_type=None):
@@ -390,14 +477,41 @@ def read_gff(gff_path, keep_type=None):
     for seq in gff_dict:
         gff_dict[seq].sort(key=lambda x: x["start"])
 
-    return dict(gff_dict)
+    annotation_sorted = annotation_rank(dict(gff_dict))
+
+    return annotation_sorted
+
+def read_gff_dict(annotation_sorted):
+    """
+    Read a GFF3 file and organize it by seq_name.
+
+    :param gff_path: path to the GFF3 file
+    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
+    :return: dict, {seq_name: [row_dict, ...]} sorted by start
+    """
+    annotation_dict = {}
+    for seq, annotation_list in annotation_sorted.items():
+        annotation_dict[seq] = {}
+        for annotation in annotation_list:
+            annotation_id = annotation["transcript_id"]
+            annotation_dict[seq][annotation_id] = annotation
+
+    return annotation_dict
+
+def annotation_rank(annotation_sorted):
+    for chromosome, annotation_info in annotation_sorted.items():
+        i = 1
+        for annotation in annotation_info:
+            annotation["rank"] = i
+            i += 1
+    return annotation_sorted
 
 def dict_rows_transfer(rows):
-    dict_rows = {}
+    rows_dict = {}
     for row in rows:
         name = row["Name"]
-        dict_rows[name] = row
-    return dict_rows
+        rows_dict[name] = row
+    return rows_dict
 
 def find_position(transcript_id, sequence_id, annotation_sorted, up_num, down_num):
     """
@@ -448,6 +562,75 @@ def find_position(transcript_id, sequence_id, annotation_sorted, up_num, down_nu
         elif i == annotation_length-1:
             print(f"Warning! {transcript_id} is not found in {sequence_id} of reference genome.")
 
+def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num):
+    """
+    Retrieve the positional information of the m upstream and n downstream mRNAs for a specified mRNA.
+    :param transcript_id: NCBI id, such as "XM_742446.1"
+    :param sequence_id: sequence of the transcript, NCBI id, such as "NC_007194.1"
+    :param annotation_sorted: the sorted annotation dictionary.
+    :param n: number of positions to identify at the up and down-stream positions.
+    :return: up_down_locations: a dictionary with the location of input mRNA, its up and down-stream mRNA positions.
+    """
+    annotation_sequences = annotation_sorted[sequence_id]
+    annotation_length = len(annotation_sequences)
+    up_position = 0
+    down_position = 0
+
+    for i in range(1, annotation_length):
+
+        annotation = annotation_sequences[i]
+        annotation_ID = annotation["transcript_id"]
+        annotation_start = annotation["start"]
+        annotation_end = annotation["end"]
+
+        if annotation_sequences[i-1]["start"] <= start <= annotation_sequences[i]["start"]:
+            up_position = i
+        if annotation_sequences[i-1]["end"] <= end <= annotation_sequences[i]["end"]:
+            down_position = i-1
+        if i == annotation_length - 1:
+            break
+
+    if up_position > 0 and down_position > 0:
+        # overall number of positions in up and down stream positions
+        number_upstream = up_position
+        number_downstream = annotation_length - down_position + 1
+
+        # Extract
+        upstream_position = []
+        downstream_position = []
+        # extract upstream positions
+        if number_upstream >= up_num:
+            for j in range(up_position - up_num, up_position):  # m upstream positions
+                upstream_position.append(annotation_sequences[j])
+        elif up_num > number_upstream >= 1:
+            for j in range(0, up_position):  # m upstream positions
+                upstream_position.append(annotation_sequences[j])
+
+        # extract downstream positions
+        if number_downstream >= down_num:
+            for j in range(down_position + 1, down_position + down_num + 1):  # n downstream positions
+                downstream_position.append(annotation_sequences[j])
+        elif down_num > number_downstream >= 1:
+            for j in range(down_position + 1, annotation_length):  # n downstream positions
+                downstream_position.append(annotation_sequences[j])
+        position_info = {
+            'seq_name': sequence_id,
+            'start': start,
+            'end': end
+        }
+
+        up_down_locations_seq = {
+            "position": position_info,
+            'type': 'mRNA',
+            "upstream_position": upstream_position,
+            "downstream_position": downstream_position
+        }
+        return up_down_locations_seq
+
+    else:
+        print(f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
+
+
 def find_position_depth(transcript_id, rows_dict):
     #print(transcript_id)
     pos_info = rows_dict[transcript_id]
@@ -484,7 +667,7 @@ def filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, cutoff 
 
 
 
-def find_candidate_align(up_down_locations,bam_path,assembly_path):
+def find_candidate_align(up_down_locations, bam_path, assembly_path):
     """
 
     :param up_down_locations: a dictionary with the location of input mRNA, its up and down-stream mRNA positions.
@@ -497,50 +680,79 @@ def find_candidate_align(up_down_locations,bam_path,assembly_path):
     position_info = up_down_locations["position"] # one dictionary, analysis both align and unaligned genomes
     upstream_position = up_down_locations["upstream_position"] # list including dictionaries
     downstream_position = up_down_locations["downstream_position"] # list including dictionaries
-    #print(position_info, upstream_position, downstream_position)
 
-    position_involved_assembly = extract_align_seq_from_dict(bam_path, position_info)
-    position_uninvolved_assembly = not_align_seq(position_involved_assembly, assembly_path)
+    # at the candidate position
+    position_align_info = extract_align_seq_from_dict(bam_path, position_info)
+    position_involved_assembly = find_aligned_assembly(position_align_info)
+    position_uninvolved_assembly = find_not_aligned_assembly(position_involved_assembly, position_align_info, assembly_path)
 
     upstream_position_involved_assembly=[]
-    for pos in upstream_position:
-        position_involved_assembly = extract_align_seq_from_dict(bam_path, pos)
-        upstream_position_involved_assembly.append(position_involved_assembly)
+    for pos_up in upstream_position:
+        position_align_info_up = extract_align_seq_from_dict(bam_path, pos_up)
+        upstream_position_involved_assembly.append(position_align_info_up)
 
     downstream_position_involved_assembly=[]
-    for pos in downstream_position:
-        position_involved_assembly = extract_align_seq_from_dict(bam_path, pos)
-        downstream_position_involved_assembly.append(position_involved_assembly)
+    for pos_down in downstream_position:
+        position_align_info_down = extract_align_seq_from_dict(bam_path, pos_down)
+        downstream_position_involved_assembly.append(position_align_info_down)
 
     up_down_alignment = {
-        "position_assembly": {
-            "involved_assembly": position_involved_assembly,
+        "position_assembly": # at the candidate position
+            {"involved_assembly": position_involved_assembly,
             "uninvolved_assembly": position_uninvolved_assembly
-        },
+             },
+        # aligned assemblies at the up and down positions
         "upstream_position_assembly": upstream_position_involved_assembly,
         "downstream_position_assembly": downstream_position_involved_assembly
     }
-    #for key, value in up_down_alignment.items():
-        #print(key,value)
     return up_down_alignment
 
 # Function: randomly sample n unaligned sequences from the up_down_alignment of a given gene,
 # and then analyze the state at each position for each of them
-def random_select_assembly(up_down_alignment, assembly_num):
+def random_select_assembly(info_list, assembly_num):
     """
     Randomly sample n unaligned sequences at the interested mRNA position.
     This function is currently not used!
-    :param up_down_alignment:
+    :param up_down_alignment: 改成对list适用的
     :param n:
     :return: selected_assemblies, list of selected assemblies
     """
-    uninvolved_assembly_list = up_down_alignment["position_assembly"]["uninvolved_assembly"]
-    number_uninvolved = len(uninvolved_assembly_list)
+    assemblies = list(info_list.keys())
+    number_uninvolved = len(assemblies)
     if 0 < number_uninvolved < assembly_num:
         assembly_num = number_uninvolved
-    selected_assemblies = random.sample(uninvolved_assembly_list, assembly_num)
-    #print(selected_assemblies)
-    return selected_assemblies
+
+    assemblies_selected = random.sample(assemblies, assembly_num)
+
+    info_selected = {}
+
+    for key, value in info_list.items():
+        if key in assemblies_selected:
+            info_selected[key] = value
+
+    return info_selected
+
+def find_candidate_status(assembly, reads):
+    status = []
+    for positions in reads:  # analyze each position
+        seq_info_list = positions["seq_info"]
+        genome_accessions = [d["Genome_accession"] for d in seq_info_list]
+        if assembly in genome_accessions:
+            status.append(True)
+        else:
+            status.append(False)
+    return status
+
+def find_assembly_status(selected_assemblies, upstream_reads, downstream_reads):
+    assemblies_status = {}
+    for assembly in selected_assemblies:  # test each selected assembly in up and downstream positions
+        assembly_status = {
+            "upstream_status": find_candidate_status(assembly, upstream_reads),
+            "downstream_status": find_candidate_status(assembly, downstream_reads)
+        }
+        assemblies_status[assembly] = assembly_status
+
+    return assemblies_status
 
 # Finding whether the selected assemblies are involved in the positions.
 def find_candidate_involvement(up_down_alignment):
@@ -551,37 +763,20 @@ def find_candidate_involvement(up_down_alignment):
     :return:
     """
     # get the random assembly list to test status
-    selected_assemblies = up_down_alignment["position_assembly"]["uninvolved_assembly"]
-    all_status = {}
-    upstream_alignment = up_down_alignment["upstream_position_assembly"]
-    downstream_alignment = up_down_alignment["downstream_position_assembly"]
-    for assembly in selected_assemblies: #test each selected assembly in up and downstream positions
-        assembly_status = {}
-        upstream_status = []
-        downstream_status = []
-        for positions in upstream_alignment: # analyze each position
-            seq_info_list = positions["seq_info"]
-            genome_accessions = [d["Genome_accession"] for d in seq_info_list]
-            if assembly in genome_accessions:
-                upstream_status.append(True)
-            else:
-                upstream_status.append(False)
-        assembly_status["upstream_status"] = upstream_status
+    assemblies_ref_allele = up_down_alignment["position_assembly"]["involved_assembly"]
+    assemblies_diff_allele = up_down_alignment["position_assembly"]["uninvolved_assembly"]
 
-        for positions in downstream_alignment: # analyze each position
-            seq_info_list = positions["seq_info"]
-            genome_accessions = [d["Genome_accession"] for d in seq_info_list]
+    #get the position information
+    upstream_reads = up_down_alignment["upstream_position_assembly"]
+    downstream_reads = up_down_alignment["downstream_position_assembly"]
 
-            if assembly in genome_accessions:
-                downstream_status.append(True)
-            else:
-                downstream_status.append(False)
-        assembly_status["downstream_status"] = downstream_status
-        all_status[assembly] = assembly_status
-    #print(all_status)
+    all_status = {
+        "ref_allele": find_assembly_status(assemblies_ref_allele, upstream_reads, downstream_reads),
+        "diff_allele": find_assembly_status(assemblies_diff_allele, upstream_reads, downstream_reads)
+    }
     return all_status
 
-def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
+def find_up_down_loci_one_status(one_status, up_down_locations,up_down_alignment): #
     """
 
     :param all_status:
@@ -598,8 +793,7 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
     #print(upstream_align)
     downstream_align = up_down_alignment["downstream_position_assembly"]
 
-
-    for genome_id, status in all_status.items():
+    for genome_id, status in one_status.items():
 
         #print(genome_id,status)
         loci_selected = {}
@@ -618,17 +812,15 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
         loci_selected["downstream_read_sequence_ID"] = False
         loci_selected["downstream_read_position"] = False
 
-
-        for i in range(1,up_number+1): # the i th nearest loci in the upstream positions
+        for j in range(1, up_number + 1):  # the i th nearest loci in the upstream positions
             # find upstream true locus
-            status_loci_up = upstream_status[-i]
-            if status_loci_up: # if status_loci == True
-                loci_selected["upstream_rank"] = i
-                # The position information of the loci on the reference genome
-                loci_selected["upstream_ref_position"] = upstream_positions[-i]
-                ##
+            status_loci_up = upstream_status[j - 1]
+            if status_loci_up:  # if status_loci == True
+                loci_selected["upstream_rank"] = j
+                loci_selected["upstream_ref_position"] = upstream_positions[j - 1]
+
                 # extract the information of the position in the selected assembly
-                up_align_list = upstream_align[-i]["seq_info"]
+                up_align_list = upstream_align[j - 1]["seq_info"]
                 aligned_info_seq = []
                 aligned_info_pos = {}
                 for genome in up_align_list:
@@ -639,50 +831,37 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
                         # Assume that each sequence appears only once
                         aligned_info_pos[sequence_ID] = genome
 
-                #print(aligned_info)
+                # print(aligned_info)
                 loci_selected["upstream_read_sequence_ID"] = aligned_info_seq
+                # print("aligned_info_seq",aligned_info_seq)
                 loci_selected["upstream_read_position"] = aligned_info_pos
-
                 break  # exit the loop once condition is met
 
-            elif i == up_number:
-                loci_selected["upstream_rank"] = False
-                loci_selected["upstream_ref_position"] = False
-                loci_selected["upstream_read_sequence_ID"] = False
-                loci_selected["upstream_read_position"] = False
-
-        for j in range(1,down_number+1): # the i th nearest loci in the downstream positions
+        for i in range(1, down_number + 1):  # the i th nearest loci in the downstream positions
             # find downstream true locus
-            status_loci_down = downstream_status[j-1]
-            if status_loci_down: # if status_loci == True
-                loci_selected["downstream_rank"] = j
-                loci_selected["downstream_ref_position"] = downstream_positions[j-1]
-
+            status_loci_down = downstream_status[-i]
+            if status_loci_down:  # if status_loci == True
+                loci_selected["downstream_rank"] = i
+                # The position information of the loci on the reference genome
+                loci_selected["downstream_ref_position"] = downstream_positions[-i]
+                ##
                 # extract the information of the position in the selected assembly
-                down_align_list = downstream_align[j-1]["seq_info"]
+                down_align_list = downstream_align[-i]["seq_info"]
                 aligned_info_seq = []
                 aligned_info_pos = {}
                 for genome in down_align_list:
                     if genome["Genome_accession"] == genome_id:
-                        #print(genome)
+                        # print(genome)
                         sequence_ID = genome["seq_ID"]
                         aligned_info_seq.append(sequence_ID)
                         # Assume that each sequence appears only once
                         aligned_info_pos[sequence_ID] = genome
 
                 # print(aligned_info)
-                # :25 error
                 loci_selected["downstream_read_sequence_ID"] = aligned_info_seq
-                #print("aligned_info_seq",aligned_info_seq)
                 loci_selected["downstream_read_position"] = aligned_info_pos
 
                 break  # exit the loop once condition is met
-
-            elif j == down_number:
-                loci_selected["downstream_rank"] = False
-                loci_selected["downstream_ref_position"] = False
-                loci_selected["downstream_read_sequence_ID"] = False
-                loci_selected["downstream_read_position"] = False
 
         up_seq = loci_selected["upstream_read_sequence_ID"]
         down_seq = loci_selected["downstream_read_sequence_ID"]
@@ -703,11 +882,6 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
                 orientation = read_up_position["orientation"]
 
                 read_interval = abs(read_down_position["end"] - read_up_position["start"])
-                """if orientation == "forward":
-                    read_interval = read_down_position["end"] - read_up_position["start"]
-                else:
-                    read_interval = read_up_position["end"] - read_down_position["start"]"""
-
                 loci_selected["read_interval"] = read_interval
                 #print(read_up_position,'\t',read_down_position, interval)
 
@@ -725,6 +899,50 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment): #
 
     return up_down_loci
 
+def filter_up_down_loci(up_down_loci, interval_difference = 250):
+    filtered_up_down_loci = {}
+    for genome_id, loci_selected in up_down_loci.items():
+        skip_loop = False
+        for key, value in loci_selected.items():
+            if value == False:
+                skip_loop = True
+        if skip_loop:
+            continue
+
+        if loci_selected["interval difference(%)"] >= interval_difference:
+            continue
+
+        filtered_up_down_loci[genome_id] = loci_selected
+
+    return filtered_up_down_loci
+
+def find_up_down_loci(all_status, up_down_locations,up_down_alignment):
+    ref_allele_status = all_status["ref_allele"]
+    diff_allele_status = all_status["diff_allele"]
+
+    ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations,up_down_alignment)
+    ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
+    diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
+    diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)
+    all_up_down_loci = {
+        "ref_up_down_loci": ref_up_down_loci_filtered,
+        "diff_up_down_loci": diff_up_down_loci_filtered
+    }
+    return all_up_down_loci
+
+def count_aligned_reads(all_up_down_loci):
+    # count the number of reads completely aligned to the interval.
+    ref_up_down_loci = all_up_down_loci["ref_up_down_loci"]
+    diff_up_down_loci = all_up_down_loci["diff_up_down_loci"]
+    ref_assembly_number = len(ref_up_down_loci.keys())
+    diff_assembly_number = len(diff_up_down_loci.keys())
+    aligned_reads_number = {
+        "ref_assembly_number": ref_assembly_number,
+        "diff_assembly_number": diff_assembly_number,
+        "all_assembly_number": ref_assembly_number + diff_assembly_number
+    }
+    return aligned_reads_number
+
 def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit):
     """
     Find the position data for each of the candidate positions.
@@ -732,35 +950,48 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,ass
     :param annotation_sorted:
     :return: candidate_data_positions:
     """
-    candidate_data_summary = {}
-    for transcript_id,info in candidate_data.items():
-        sequence_id = info["seqid"]
-        # finding the up and downstream positions
-        up_down_locations = find_position(transcript_id, sequence_id, annotation_sorted, up_num, down_num)
+    candidate_data_summary = []
+    for seq_id,candidates in candidate_data.items():
 
-        # check the mean depth of the positions
-        depth_status = filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)
-        if depth_status == False:
-            continue
+        for candidate in candidates:
+            sequence_id = seq_id
+            start = candidate["start"]
+            end = candidate["end"]
+            # finding the up and downstream positions
+            up_down_locations = find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num)
 
-        # finding the genes aligned to the positions
-        up_down_alignment = find_candidate_align(up_down_locations,bam_path,assembly_path)
-        # identify status of random genome assemblies at the positions
-        all_status = find_candidate_involvement(up_down_alignment)
-        # identify the nearest upstream and downstream loci
-        up_down_loci = find_up_down_loci(all_status, up_down_locations,up_down_alignment)
+            if up_down_locations  == None:
+                continue
 
-        candidate_data_summary[transcript_id] = {
-            "position_info": up_down_locations,
-            "align_info": up_down_alignment,
-            "status_info":all_status,
-            "up_down_loci": up_down_loci
-        }
+            # check the mean depth of the positions
+            depth_status = filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)
+            if depth_status == False:
+                continue
 
-    for key,value in candidate_data_summary.items():
-        for key2, value2 in value["up_down_loci"].items():
-            #print(key, key2, value2)
-            continue
+            # finding the genes aligned to the positions
+            up_down_alignment = find_candidate_align(up_down_locations, bam_path, assembly_path)
+
+            # identify status of random genome assemblies at the positions
+            all_status = find_candidate_involvement(up_down_alignment)
+
+            # identify the nearest upstream and downstream loci
+            all_up_down_loci = find_up_down_loci(all_status, up_down_locations, up_down_alignment)
+            for key, value in all_up_down_loci.items():
+                #print(key,value)
+                continue
+
+            aligned_reads_number = count_aligned_reads(all_up_down_loci)
+
+            summary = {
+                "region_name": candidate["region_name"],
+                "position_info": up_down_locations,
+                "align_info": up_down_alignment,
+                "status_info": all_status,
+                "up_down_loci": all_up_down_loci,
+                "aligned_reads_number": aligned_reads_number
+            }
+
+            candidate_data_summary.append(summary)
 
     return candidate_data_summary
 
@@ -824,114 +1055,101 @@ def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, cont
     print(f"Sequence saved to {output_file}")
     return output_file
 
-def find_allele_sequence_inbetween(bam_path, reference_genome, assembly_dir,candidate_data_summary,output_path, assembly_num):
+def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_path, assembly_num):
+    allele_info_selected = random_select_assembly(allele_info, assembly_num)
+
+    for genome, info in allele_info_selected.items():
+        seq = info["seq_chromosome"]
+        seq_info = list(seq)[0]  # assume there is only one seq
+
+        upstream_read_position = info["upstream_read_position"][seq_info]
+        downstream_read_position = info["downstream_read_position"][seq_info]
+
+        start_read = min(upstream_read_position["start"], downstream_read_position["start"])
+        end_read = max(upstream_read_position["end"], downstream_read_position["end"])
+        orientation = upstream_read_position["orientation"]
+
+        #if end_read - start_read > 100000:
+            #continue
+
+        extract_allele_sequence(
+            assembly_dir,
+            region_name,
+            genome,
+            seq_info,
+            start_read,
+            end_read,
+            orientation,
+            type_seq,
+            output_path
+        )
+
+    return True
+
+def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, assembly_num):
     """
 
     :param reference_genome:
     :param assembly_dir:
     :param candidate_data_summary:
+    summary = {
+                "region_name": candidate["region_name"],
+                "position_info": up_down_locations,
+                "align_info": up_down_alignment,
+                "status_info": all_status,
+                "up_down_loci": all_up_down_loci,
+                "aligned_reads_number": aligned_reads_number
+            }
     :param output_path:
     :return:
     """
-    for gene,summary in candidate_data_summary.items():
+    for summary in candidate_data_summary: # the summary information of each candidate gene
+        region_name = summary["region_name"]
+        aligned_reads_number = summary["aligned_reads_number"]["all_assembly_number"]
+        if aligned_reads_number < 15:
+            continue
 
-        seq_list = []
-        m = 0
-        for genome, info in summary["up_down_loci"].items():
-            seq = info["seq_chromosome"]
+        ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
+        diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
-            if seq == False:
-                continue
+        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, assembly_num)
+        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, assembly_num)
+        return True
 
-            if info["interval difference(%)"] > 200:
-                continue
+def extract_reference():
 
-            seq_list.append(seq) # check the number of chromosomes
+    print("not finished")
+    """if seq_list != []:
+                # also extract the reference sequence
+                up_down_alignment = summary["align_info"]
+                seq_info_ref = up_down_alignment["position_assembly"]["involved_assembly"]["pos_info"]["seq"]
+                # for a, b in up_down_alignment.items():
+                # print(a,b)
 
-            seq_info = list(seq)[0] # assume there is only one seq
+                if up_down_alignment["upstream_position_assembly"] == [] or up_down_alignment[
+                    "downstream_position_assembly"] == []:
+                    continue
 
-            upstream_rank = info["upstream_rank"]
-            downstream_rank = info["downstream_rank"]
-            upstream_read_position = info["upstream_read_position"][seq_info]
-            downstream_read_position = info["downstream_read_position"][seq_info]
-
-            start_read = min(upstream_read_position["start"], downstream_read_position["start"])
-            end_read = max(upstream_read_position["end"], downstream_read_position["end"])
-            orientation = upstream_read_position["orientation"]
-
-            if end_read - start_read > 100000:
-                continue
-
-            extract_allele_sequence(
-                assembly_dir,
-                gene,
-                genome,
-                seq_info,
-                start_read,
-                end_read,
-                orientation,
-                "allele",
-                output_path
-            )
-            m += 1
-            if m == assembly_num:
-                break
-
-        if seq_list != []:
-            # also extract the reference sequence
-            up_down_alignment = summary["align_info"]
-            seq_info_ref = up_down_alignment["position_assembly"]["involved_assembly"]["pos_info"]["seq"]
-            # for a, b in up_down_alignment.items():
-            # print(a,b)
-
-            if up_down_alignment["upstream_position_assembly"] == [] or up_down_alignment[
-                "downstream_position_assembly"] == []:
-                continue
-
-            start_ref = up_down_alignment["upstream_position_assembly"][0]["pos_info"]["start"]
-            end_ref = up_down_alignment["downstream_position_assembly"][-1]["pos_info"]["end"]
-            extract_allele_sequence(
-                assembly_dir,
-                gene,
-                reference_genome,
-                seq_info_ref,
-                start_ref,
-                end_ref,
-                "forward",
-                "reference",
-                output_path
-            )
-
-            #extract other allele sequence similar to the reference
-            align_reference_allele = extract_align_seq(bam_path, seq_info_ref, start_ref, end_ref, full_cover=True)
-            seq_reference_alleles = align_reference_allele["seq_info"]
-
-            n = 0
-            for seq_reference_allele in seq_reference_alleles:
-                genome_accession_reference_allele = seq_reference_allele["Genome_accession"]
-                seq_ID_reference_allele = seq_reference_allele["seq_ID"]
-                start_reference_allele = seq_reference_allele["start"]
-                end_reference_allele = seq_reference_allele["end"]
-                orientation_reference_allele =seq_reference_allele["orientation"]
+                start_ref = up_down_alignment["upstream_position_assembly"][0]["pos_info"]["start"]
+                end_ref = up_down_alignment["downstream_position_assembly"][-1]["pos_info"]["end"]
                 extract_allele_sequence(
                     assembly_dir,
                     gene,
-                    genome_accession_reference_allele,
-                    seq_ID_reference_allele,
-                    start_reference_allele,
-                    end_reference_allele,
-                    orientation_reference_allele,
-                    "reference_alleles",
+                    reference_genome,
+                    seq_info_ref,
+                    start_ref,
+                    end_ref,
+                    "forward",
+                    "reference",
                     output_path
                 )
-                n += 1
-                if n == assembly_num:
-                    break
+
+                """
 
 
 #file paths
 # The modified csv file that contains the mRNA with depth of interests.
-depth_path = r"/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test3/all51_to_GCF_000002655.1_meandepth.txt"
+depth_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test3/all51_to_GCF_000002655.1_meandepth.txt"
 # Reference genome annotation of the BAM file
 gtf_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.gtf"
 gff_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.gff"
@@ -960,40 +1178,47 @@ reference_genome = "GCF_000002655.1"
 rows,fieldnames = process_data(depth_path)
 print("rows",len(rows))
 filtered_rows = select_depth(rows,lower_limit,upper_limit) # the candidate mRNA data
-print("filtered_rows",len(filtered_rows))
+#print("filtered_rows",filtered_rows)
 rows_dict = dict_rows_transfer(rows)
 
+candidate_data_list = extract_candidate_position_list(filtered_rows)
 
-candidate_data = extract_candidate_position(filtered_rows)
-
-# Select up and downstream n th mRNA position of the candidate position
-#annotation_sorted = read_gtf(annotation_path, keep_type="transcript")
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
+annotation_sorted_dict = read_gff_dict(annotation_sorted)
 
-"""#extract the up dan downstream positions
-up_down_locations = find_position("XM_749896.2", "NC_007196.1", annotation_sorted, up_num, down_num)
-#print(up_down_locations)
-up_down_alignment = find_candidate_align(up_down_locations,bam_path,assembly_path)
-selected_assemblies = random_select_assembly(up_down_alignment)
-all_status = find_candidate_involvement(up_down_alignment)
-up_down_loci = find_up_down_loci(all_status, up_down_locations,up_down_alignment)
-filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)"""
+candidate_data_mix = mix_candidate_position(candidate_data_list, annotation_sorted_dict)
+#print(candidate_data_mix)
 
-#test the main code
-candidate_data_test = dict(list(candidate_data.items())[0:])
-#print(candidate_data_test)
+# test the main code
+candidate_data_test = dict(list(candidate_data_mix.items())[0:5])
+# print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test,
             annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit)
 
-gene_between = find_allele_sequence_inbetween(bam_path, reference_genome, assembly_dir,candidate_data_summary,output_path, assembly_num)
+# print(len(candidate_data_summary))
+gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, assembly_num)
+"""
 
 
-"""#test
+#extract the up dan downstream positions
+up_down_locations_seq = find_position_seq("NC_007196.1",1524532,1525609, annotation_sorted, up_num, down_num)
+#print("up_down_locations_seq",up_down_locations_seq)
+up_down_alignment = find_candidate_align(up_down_locations_seq,bam_path,assembly_path)#
+
+
+selected_assemblies = random_select_assembly(up_down_alignment)
+all_status = find_candidate_involvement(up_down_alignment)
+up_down_loci = find_up_down_loci(all_status, up_down_locations,up_down_alignment)
+filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)
+
+
+
+#test
 output_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test_seq_5/MAT1-2-4_test2"
 candidate_data_test = {'XM_749897.2':
                       {'seqid': 'NC_007196.1',
-                       'start': '1523105',
-                       'end': '1524006',
+                       'start': 1523105,
+                       'end': 1524006,
                        'depth': '35.0000000',
                        'id': 'XM_749897.2',
                        'locus_tag': 'AFUA_3G06160'}}
@@ -1001,7 +1226,13 @@ candidate_data_test = {'XM_749897.2':
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test,
             annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit)
+print(candidate_data_summary )
 
-gene_between = find_allele_sequence_inbetween(bam_path, reference_genome, assembly_dir,candidate_data_summary,output_path, assembly_num)
+for gene,info in candidate_data_summary.items():
+    for key, value in info.items():
+        print(gene,key, value)
+
+
+#gene_between = find_allele_sequence_inbetween(bam_path, reference_genome, assembly_dir,candidate_data_summary,output_path, assembly_num)
 """
 
