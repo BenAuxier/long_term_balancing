@@ -316,27 +316,30 @@ def extract_candidate_position_list(filtered_rows):
             "locus_tag": row["locus_tag"]
         }
         candidate_data_list[row["seqid"]].append(row_data)
+
     return candidate_data_list
 
 def mix_candidate_position(candidate_data_list, annotation_dict):
     candidate_data_mix = {}
+    number = 0
     for seq, candidates in candidate_data_list.items():
         annotation_seq = annotation_dict[seq]
         candidate_data_mix[seq] = []
         mixed_data = {}
 
-        for i in range(0,len(candidates)):
+        for i in range(0, len(candidates)):
+            number += 1
             candidate_i = candidates[i]
-            id_i = candidate_i["id"]
-            annotation_candidate_i = annotation_seq[id_i]
+            gene_id_i = candidate_i["id"]
+            annotation_candidate_i = annotation_seq[gene_id_i]
 
             if mixed_data == {}: # if nothing in mixed data, select the current annotation
 
                 # if there is not a mixed data, import this annotation as the mixed data
                 mixed_data = {
                     "seqid": seq,
-                    "region_name": id_i,
-                    "start_gene": id_i,
+                    "region_name": gene_id_i,
+                    "start_gene": gene_id_i,
                     "start": annotation_candidate_i["start"],
                     "end": annotation_candidate_i["end"],
                     "rank": annotation_candidate_i["rank"]
@@ -351,31 +354,34 @@ def mix_candidate_position(candidate_data_list, annotation_dict):
                 candidate_data_mix[seq].append(mixed_data)
                 break
 
-            # candidate i + 1
-            candidate_i_1 = candidates[i+1]
-            id_i_1 = candidate_i_1["id"]
-            annotation_candidate_i_1 = annotation_seq[id_i_1]
-            rank_i_1 = annotation_candidate_i_1["rank"]
-
-            #compare rank of i+1 to i
-            if abs(rank_i_1-rank_i) <= 2: # mix
-                mixed_data_new = {
-                    "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
-                    "start_gene": mixed_data["start_gene"],
-                    "start": start_i,
-                    "end": annotation_candidate_i_1["end"],
-                    "rank": rank_i_1
-                }
-                mixed_data = mixed_data_new
-
-            else:
+            if i == len(candidates) - 1:
                 candidate_data_mix[seq].append(mixed_data)
-                print(mixed_data["region_name"])
-                mixed_data = {}
-
-            if i == len(candidates)-2:
                 break
 
+            elif i <= len(candidates)-2:
+                # candidate i + 1
+                candidate_i_1 = candidates[i + 1]
+                id_i_1 = candidate_i_1["id"]
+                annotation_candidate_i_1 = annotation_seq[id_i_1]
+                rank_i_1 = annotation_candidate_i_1["rank"]
+
+                # compare rank of i+1 to i
+                if abs(rank_i_1 - rank_i) <= 2:  # mix
+                    mixed_data_new = {
+                        "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
+                        "start_gene": mixed_data["start_gene"],
+                        "start": start_i,
+                        "end": annotation_candidate_i_1["end"],
+                        "rank": rank_i_1
+                    }
+                    mixed_data = mixed_data_new
+
+                else:
+                    candidate_data_mix[seq].append(mixed_data)
+                    # print(mixed_data["region_name"])
+                    mixed_data = {}
+
+    print("number", number)
     return candidate_data_mix
 
 
@@ -513,55 +519,6 @@ def dict_rows_transfer(rows):
         rows_dict[name] = row
     return rows_dict
 
-def find_position(transcript_id, sequence_id, annotation_sorted, up_num, down_num):
-    """
-    Retrieve the positional information of the m upstream and n downstream mRNAs for a specified mRNA.
-    :param transcript_id: NCBI id, such as "XM_742446.1"
-    :param sequence_id: sequence of the transcript, NCBI id, such as "NC_007194.1"
-    :param annotation_sorted: the sorted annotation dictionary.
-    :param n: number of positions to identify at the up and down-stream positions.
-    :return: up_down_locations: a dictionary with the location of input mRNA, its up and down-stream mRNA positions.
-    """
-    annotation_sequences = annotation_sorted[sequence_id]
-    annotation_length = len(annotation_sequences)
-    for i in range(0, annotation_length):
-        annotation = annotation_sequences[i]
-        annotation_ID = annotation["transcript_id"]
-        if annotation_ID == transcript_id:
-            transcript_position = i
-            position_info = annotation_sequences[transcript_position]
-
-            number_upstream = transcript_position - 0
-            number_downstream = annotation_length - transcript_position -1
-
-            # Extract
-            upstream_position = []
-            downstream_position = []
-            # extract upstream positions
-            if number_upstream >= up_num:
-                for j in range(transcript_position-up_num,i): # m upstream positions
-                    upstream_position.append(annotation_sequences[j])
-            elif up_num > number_upstream >= 1:
-                for j in range(0,transcript_position): # m upstream positions
-                    upstream_position.append(annotation_sequences[j])
-            # extract downstream positions
-            if number_downstream >= down_num:
-                for j in range(transcript_position+1,transcript_position+down_num+1): # n downstream positions
-                    downstream_position.append(annotation_sequences[j])
-            elif down_num > number_downstream >= 1:
-                for j in range(transcript_position+1,annotation_length): # n downstream positions
-                    downstream_position.append(annotation_sequences[j])
-
-            up_down_locations = {
-                "position": position_info,
-                "upstream_position": upstream_position,
-                "downstream_position": downstream_position
-            }
-            return up_down_locations
-
-        elif i == annotation_length-1:
-            print(f"Warning! {transcript_id} is not found in {sequence_id} of reference genome.")
-
 def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num):
     """
     Retrieve the positional information of the m upstream and n downstream mRNAs for a specified mRNA.
@@ -579,9 +536,6 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     for i in range(1, annotation_length):
 
         annotation = annotation_sequences[i]
-        annotation_ID = annotation["transcript_id"]
-        annotation_start = annotation["start"]
-        annotation_end = annotation["end"]
 
         if annotation_sequences[i-1]["start"] <= start <= annotation_sequences[i]["start"]:
             up_position = i
@@ -593,7 +547,7 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     if up_position > 0 and down_position > 0:
         # overall number of positions in up and down stream positions
         number_upstream = up_position
-        number_downstream = annotation_length - down_position + 1
+        number_downstream = annotation_length - down_position - 1
 
         # Extract
         upstream_position = []
@@ -718,17 +672,21 @@ def random_select_assembly(info_list, assembly_num):
     :return: selected_assemblies, list of selected assemblies
     """
     assemblies = list(info_list.keys())
-    number_uninvolved = len(assemblies)
-    if 0 < number_uninvolved < assembly_num:
-        assembly_num = number_uninvolved
+    number_assemblies = len(assemblies)
+    if number_assemblies == 0:
+        info_selected = {}
 
-    assemblies_selected = random.sample(assemblies, assembly_num)
+    elif 0 < number_assemblies <= assembly_num:
+        info_selected = info_list
 
-    info_selected = {}
+    elif number_assemblies > assembly_num:
+        assemblies_selected = random.sample(assemblies, assembly_num)
 
-    for key, value in info_list.items():
-        if key in assemblies_selected:
-            info_selected[key] = value
+        info_selected = {}
+
+        for key, value in info_list.items():
+            if key in assemblies_selected:
+                info_selected[key] = value
 
     return info_selected
 
@@ -928,6 +886,7 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment):
         "ref_up_down_loci": ref_up_down_loci_filtered,
         "diff_up_down_loci": diff_up_down_loci_filtered
     }
+
     return all_up_down_loci
 
 def count_aligned_reads(all_up_down_loci):
@@ -941,6 +900,7 @@ def count_aligned_reads(all_up_down_loci):
         "diff_assembly_number": diff_assembly_number,
         "all_assembly_number": ref_assembly_number + diff_assembly_number
     }
+
     return aligned_reads_number
 
 def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit):
@@ -981,6 +941,11 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,ass
                 continue
 
             aligned_reads_number = count_aligned_reads(all_up_down_loci)
+
+            #Filter the complicated genomic region where not many reads completely aligned to
+            all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
+            if all_aligned_reads_number < 15:
+                continue
 
             summary = {
                 "region_name": candidate["region_name"],
@@ -1105,16 +1070,18 @@ def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_pa
     """
     for summary in candidate_data_summary: # the summary information of each candidate gene
         region_name = summary["region_name"]
-        aligned_reads_number = summary["aligned_reads_number"]["all_assembly_number"]
-        if aligned_reads_number < 15:
-            continue
 
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
+        if len(ref_allele_info) == 0 or len(diff_allele_info) == 0:
+            continue
+
         ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, assembly_num)
         diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, assembly_num)
-        return True
+        print(region_name, "finished")
+
+    return True
 
 def extract_reference():
 
@@ -1178,10 +1145,11 @@ reference_genome = "GCF_000002655.1"
 rows,fieldnames = process_data(depth_path)
 print("rows",len(rows))
 filtered_rows = select_depth(rows,lower_limit,upper_limit) # the candidate mRNA data
-#print("filtered_rows",filtered_rows)
+print("filtered_rows",len(filtered_rows))
 rows_dict = dict_rows_transfer(rows)
 
 candidate_data_list = extract_candidate_position_list(filtered_rows)
+print("candidate_data_list",len(candidate_data_list))
 
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
 annotation_sorted_dict = read_gff_dict(annotation_sorted)
@@ -1190,11 +1158,11 @@ candidate_data_mix = mix_candidate_position(candidate_data_list, annotation_sort
 #print(candidate_data_mix)
 
 # test the main code
-candidate_data_test = dict(list(candidate_data_mix.items())[0:5])
+candidate_data_test = dict(list(candidate_data_mix.items())[0:])
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test,
             annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit)
-
+#print("candidate_data_summary", candidate_data_summary)
 # print(len(candidate_data_summary))
 gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, assembly_num)
 """
