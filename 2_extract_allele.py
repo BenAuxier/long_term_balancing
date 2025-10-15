@@ -2,7 +2,6 @@
 Extract the allele of each gene in multiple genomes
 
 """
-import subprocess
 import csv
 import pysam
 import pandas as pd
@@ -12,7 +11,319 @@ import os
 import glob
 from Bio import SeqIO
 
-#from pysam.libchtslib import CFalse
+##########################################################
+# 1. process depth result data
+def process_data(input_file):
+    """
+    Process the depth data from a txt file (input_file).
+    :param input_file: path to the analysis result (depth of alignment at each position).
+    :return: rows: all rows of the txt file. Example:
+    [{'seq_ID': 'NC_007194.1',
+     'type': 'mRNA',
+     'start': 216,
+     'end': 836,
+     'strand': '+',
+     'depth': '50.0000000',
+     'Parent': 'gene-AFUA_1G00100',
+     'Name': 'XM_001481640.1',
+     'locus_tag': 'AFUA_1G00100',
+     'product': 'putative MFS monocarboxylate transporter',
+     'transcript_id': 'XM_001481640.1'}, ...]
+     """
+
+    # Read and process data
+    rows = []
+    all_keys = set()
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+
+            # Basic columns (first 8 columns + attributes + depth)
+            base_cols = [
+                "seq_ID", "source", "type", "start", "end",
+                "score", "strand", "phase", "attributes", "depth"
+            ]
+            row = dict(zip(base_cols, parts))
+            row["start"] = int(row["start"])
+            row["end"] = int(row["end"])
+
+            # Parse the 'attributes' column
+            attributes = row["attributes"].split(";")
+            for attr in attributes:
+                attr = attr.strip()
+                if not attr:
+                    continue
+                if "=" in attr:
+                    key, value = attr.split("=", 1)
+                else:
+                    continue
+                row[key] = value
+                all_keys.add(key)
+
+            #select column
+            keys_to_keep = ['seq_ID', 'type', 'start', 'end', 'strand', 'depth', 'Parent', 'Name',
+                            'locus_tag', 'product', 'transcript_id']
+            row_new = {}
+            for key in keys_to_keep:
+                row_new[key] = row[key]
+
+            rows.append(row_new)
+    return rows
+
+def select_depth(rows,lower_limit,upper_limit):
+    """
+    Only keeps the rows with depth between lower_limit and upper_limit.
+    :param rows:
+    :param lower_limit:
+    :param upper_limit:
+    :return: filtered_rows, same as rows, a list including
+    dictionaries for each mRNA position
+    """
+
+    filtered_rows = []
+    for row in rows:
+        depth = row["depth"]
+        depth = float(depth)
+        if lower_limit < depth < upper_limit:
+            # print(row)
+            filtered_rows.append(row)
+
+    return filtered_rows
+
+def dict_rows_transfer(rows):
+    """
+    Transfer a list into dictionary
+    :param rows: a list including dictionaries for each mRNA position
+    :return: a dictionary including dictionaries for each mRNA position
+    """
+    rows_dict = {}
+    for row in rows:
+        name = row["Name"]
+        rows_dict[name] = row
+    return rows_dict
+
+def extract_candidate_position_list(filtered_rows):
+    """
+    Transfer the list to a dictionary, only keep the necessary information
+    :param filtered_rows: A list including each rows as a dictionary.
+    :return: candidate_data_seq, a dictionary, with key:value =
+    sequence_id : [candiate_info1, candiate_info2, ...]
+
+    {'NC_007194.1':
+    [{'seq_ID': 'NC_007194.1',
+    'start': 29598,
+    'end': 29981,
+    'depth': '12.0000000',
+    'id': 'XM_744675.1',
+    'locus_tag': 'AFUA_1G00160'}, ...]
+    xxxx: ......
+    }
+
+    """
+    candidate_data_seq = {}
+    for row in filtered_rows:
+        if not row["seq_ID"] in candidate_data_seq.keys():
+            candidate_data_seq[row["seq_ID"]] = []
+
+        row_data = {
+            "seq_ID": row["seq_ID"],
+            "start": row["start"],
+            "end": row["end"],
+            "depth": row["depth"],
+            "id": row["Name"],
+            "locus_tag": row["locus_tag"]
+        }
+        candidate_data_seq[row["seq_ID"]].append(row_data)
+
+    return candidate_data_seq
+
+def read_gff(gff_path, keep_type=None):
+    """
+    Read a GFF3 file and organize it by seq_ID.
+
+    :param gff_path: path to the GFF3 file
+    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
+    :return: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
+    """
+    gff_dict = defaultdict(list)
+
+    with open(gff_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+        ])
+
+        for row in reader:
+            if row["seq_ID"].startswith("#"):
+                continue  # skip header/comment lines
+            if keep_type and row["type"] != keep_type:
+                continue
+
+            # parse attributes (GFF3 format: key=value;key=value;...)
+            attr_dict = {}
+            for attr in row["attributes"].split(";"):
+                if attr.strip() == "":
+                    continue
+                if "=" in attr:
+                    key, value = attr.strip().split("=", 1)
+                    attr_dict[key] = value
+
+            row_data = {
+                "seq_ID": row["seq_ID"],
+                "type": row["type"],
+                "start": int(row["start"]),
+                "end": int(row["end"]),
+                "id": attr_dict.get("ID"),
+                "parent": attr_dict.get("Parent"),
+                "gene_id": attr_dict.get("gene_id"),         # 有些GFF也可能保留 GTF风格
+                "transcript_id": attr_dict.get("transcript_id")
+            }
+
+            gff_dict[row["seq_ID"]].append(row_data)
+
+    # sort each list by start position
+    for seq in gff_dict:
+        gff_dict[seq].sort(key=lambda x: x["start"])
+
+    annotation_sorted = annotation_rank(dict(gff_dict))
+
+    return annotation_sorted
+
+def annotation_rank(annotation_sorted):
+    for chromosome, annotation_info in annotation_sorted.items():
+        i = 1
+        for annotation in annotation_info:
+            annotation["rank"] = i
+            i += 1
+    return annotation_sorted
+
+def read_gff_dict(annotation_sorted):
+    """
+    Convert annotation storage format.
+    :param annotation_sorted: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
+    :return: dict, {seq_ID: {transcript_id: annotation, ...}}
+    """
+    annotation_dict = {}
+    for seq, annotation_list in annotation_sorted.items():
+        annotation_dict[seq] = {}
+        for annotation in annotation_list:
+            annotation_id = annotation["transcript_id"]
+            annotation_dict[seq][annotation_id] = annotation
+
+    return annotation_dict
+
+
+
+
+def merge_candidate_position(candidate_data_seq, annotation_dict):
+    """
+    Merge adjacent or only one-position-separated candidate regions into a
+    larger candidate region.
+    :param candidate_data_seq:
+    {'NC_007194.1':
+    [{'seq_ID': 'NC_007194.1',
+    'start': 29598,
+    'end': 29981,
+    'depth': '12.0000000',
+    'id': 'XM_744675.1',
+    'locus_tag': 'AFUA_1G00160'}, ...]
+    xxxx: ......
+    }
+    :param annotation_dict: dict, genome annotation
+    {seq_ID: {transcript_id: annotation, ...}}
+    :return: candidate_merge, dict
+    {
+    NC_007197.1:
+    [{'seq_ID': 'NC_007197.1',
+    'region_name': 'XM_741280.1-XM_741278.1',
+    'start_gene': 'XM_741280.1',
+    'end_gene': 'XM_741278.1',
+    'start': 223151,
+    'end': 228584,
+    'rank': 72,
+    'gene_included': ['XM_741280.1', 'XM_741279.1', 'XM_741278.1'],
+    'gene_number': 3
+    }, ...],
+    seq_ID_xxx: xxx,
+    ......
+    }
+    """
+    candidate_merge = {}
+
+    for seq, candidates in candidate_data_seq.items():
+        annotation_seq = annotation_dict[seq]
+        candidate_merge[seq] = []
+        mixed_data = {}
+
+        for i in range(0, len(candidates)):
+            candidate_i = candidates[i]
+            gene_id_i = candidate_i["id"]
+            annotation_candidate_i = annotation_seq[gene_id_i]
+
+            if mixed_data == {}:  # if nothing in mixed data, select the current annotation
+
+                # if there is not a mixed data, import this annotation as the mixed data
+                mixed_data = {
+                    "seq_ID": seq,
+                    "region_name": gene_id_i,
+                    "start_gene": gene_id_i,
+                    "end_gene": gene_id_i,
+                    "start": annotation_candidate_i["start"],
+                    "end": annotation_candidate_i["end"],
+                    "rank": annotation_candidate_i["rank"],
+                    "gene_included": [gene_id_i],
+                    "gene_number": 1
+                }
+
+            # Then there is already a mixed data from i-n to i
+            start_i = mixed_data["start"]
+            rank_i = mixed_data["rank"]
+
+            # if there is only one candidate in the genomic sequence
+            if len(candidates) == 1:
+                candidate_merge[seq].append(mixed_data)
+                break
+
+            if i == len(candidates) - 1:
+                candidate_merge[seq].append(mixed_data)
+                break
+
+            elif i <= len(candidates) - 2:
+                # candidate i + 1
+                candidate_i_1 = candidates[i + 1]
+                id_i_1 = candidate_i_1["id"]
+                annotation_candidate_i_1 = annotation_seq[id_i_1]
+                rank_i_1 = annotation_candidate_i_1["rank"]
+
+                # compare rank of i+1 to i
+                if abs(rank_i_1 - rank_i) <= 2:  # mix
+                    mixed_data_new = {
+                        "seq_ID": mixed_data["seq_ID"],
+                        "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
+                        "start_gene": mixed_data["start_gene"],
+                        "end_gene": id_i_1,
+                        "start": start_i,
+                        "end": annotation_candidate_i_1["end"],
+                        "rank": rank_i_1,
+                        "gene_included": mixed_data["gene_included"]
+                    }
+                    mixed_data_new["gene_included"].append(id_i_1)
+                    mixed_data_new["gene_number"] = len(mixed_data_new["gene_included"])
+
+                    mixed_data = mixed_data_new
+
+                else:
+                    candidate_merge[seq].append(mixed_data)
+                    # print(mixed_data["region_name"])
+                    mixed_data = {}
+
+    return candidate_merge
+
+
+
 
 
 ####################################
@@ -158,7 +469,7 @@ def extract_align_seq_from_dict(bam_path, position_info):
     :param position_info:
     :return: align_info_B
     """
-    seq = position_info["seq_name"]
+    seq = position_info["seq_ID"]
     start = position_info["start"]
     end = position_info["end"]
     align_info_B = extract_align_seq(bam_path, seq, start, end)
@@ -188,94 +499,17 @@ def find_not_aligned_assembly(aligned_genome,align_info, assembly_path):
     #print(all_genome)
     not_align_list = list(set(all_genome) - set(aligned_genome))
     position = align_info["pos_info"]
-    print(f"Position on reference genome: sequence ID: {position['seq']}, "
-          f"start position: {position['start']}, "
-          f"end position: {position['end']}.\n"
-          f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
-          f"not aligned {len(not_align_list)} assemblies.")
+    #print(f"Position on reference genome: sequence ID: {position['seq']}, "
+          #f"start position: {position['start']}, "
+          #f"end position: {position['end']}.\n"
+          #f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
+          #f"not aligned {len(not_align_list)} assemblies.")
     return not_align_list
 #######################################
 
-# Process data from txt file, and filter it between up and down limits
-def process_data(input_file):
-    """
-    process the data from a txt file.
-    :param input_file: path to the analysis result (depth of bam file at mRNA positions).
-    :return: rows: rows of the file (a list including dictionaries),
-    fieldnames: keys/headers of the file
-    """
-    # Read and process data
-    rows = []
-    all_keys = set()
+# filter the input file it between up and down limits
 
-    with open(input_file, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split("\t")
 
-            # Basic columns (first 8 columns + attributes + depth)
-            base_cols = [
-                "seqid", "source", "type", "start", "end",
-                "score", "strand", "phase", "attributes", "depth"
-            ]
-            row = dict(zip(base_cols, parts))
-
-            # Parse the 'attributes' column
-            attributes = row["attributes"].split(";")
-            for attr in attributes:
-                attr = attr.strip()
-                if not attr:
-                    continue
-                if "=" in attr:
-                    key, value = attr.split("=", 1)
-                else:
-                    continue
-                row[key] = value
-                all_keys.add(key)
-
-            rows.append(row)
-
-        # Construct output column names: basic columns + all expanded attribute keys
-        fieldnames = base_cols + sorted(all_keys)
-        #print(fieldnames)
-
-    return rows,fieldnames
-
-def select_depth(rows,lower_limit,upper_limit):
-    """
-    Only keeps the rows with depth between lower_limit and upper_limit.
-    :param rows:
-    :param lower_limit:
-    :param upper_limit:
-    :return: filtered_rows, a list including dictionaries for each mRNA position
-    """
-
-    filtered_rows = []
-    for row in rows:
-        depth = row["depth"]
-        depth = float(depth)
-        if lower_limit < depth < upper_limit:
-            # print(row)
-            filtered_rows.append(row)
-    return filtered_rows
-
-def save_rows(output_file, filtered_rows):
-    """
-    Save the filtered rows to a csv file.
-    :param output_file:
-    :param filtered_rows:
-    :return:
-    """
-    # Write to CSV file
-    with open(output_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in filtered_rows:
-            writer.writerow(row)
-
-    print("Completed! Output file:", output_file)
 
 def extract_candidate_position(filtered_rows):
     """
@@ -286,7 +520,7 @@ def extract_candidate_position(filtered_rows):
     candidate_data = {}
     for row in filtered_rows:
         row_data = {
-            "seqid": row["seqid"],
+            "seq_ID": row["seq_ID"],
             "start": row["start"],
             "end": row["end"],
             "depth": row["depth"],
@@ -296,114 +530,26 @@ def extract_candidate_position(filtered_rows):
         candidate_data[row["Name"]] = row_data
     return candidate_data
 
-def extract_candidate_position_list(filtered_rows):
-    """
-    Extract the necessary position information from the filtered data.
-    :param filtered_rows: A list including each rows as a dictionary.
-    :return: candidate_data, a dictionary, including each mRNA candidates and its information as key-value pairs.
-    """
-    candidate_data_list = {}
-    for row in filtered_rows:
-        if not row["seqid"] in candidate_data_list.keys():
-            candidate_data_list[row["seqid"]] = []
-
-        row_data = {
-            "seqid": row["seqid"],
-            "start": row["start"],
-            "end": row["end"],
-            "depth": row["depth"],
-            "id": row["Name"],
-            "locus_tag": row["locus_tag"]
-        }
-        candidate_data_list[row["seqid"]].append(row_data)
-
-    return candidate_data_list
-
-def mix_candidate_position(candidate_data_list, annotation_dict):
-    candidate_data_mix = {}
-    number = 0
-    for seq, candidates in candidate_data_list.items():
-        annotation_seq = annotation_dict[seq]
-        candidate_data_mix[seq] = []
-        mixed_data = {}
-
-        for i in range(0, len(candidates)):
-            number += 1
-            candidate_i = candidates[i]
-            gene_id_i = candidate_i["id"]
-            annotation_candidate_i = annotation_seq[gene_id_i]
-
-            if mixed_data == {}: # if nothing in mixed data, select the current annotation
-
-                # if there is not a mixed data, import this annotation as the mixed data
-                mixed_data = {
-                    "seqid": seq,
-                    "region_name": gene_id_i,
-                    "start_gene": gene_id_i,
-                    "start": annotation_candidate_i["start"],
-                    "end": annotation_candidate_i["end"],
-                    "rank": annotation_candidate_i["rank"]
-                }
-
-            # Then there is already a mixed data from i-n to i
-            start_i = mixed_data["start"]
-            rank_i = mixed_data["rank"]
-
-            # if there is only one candidate in the genomic sequence
-            if len(candidates) == 1:
-                candidate_data_mix[seq].append(mixed_data)
-                break
-
-            if i == len(candidates) - 1:
-                candidate_data_mix[seq].append(mixed_data)
-                break
-
-            elif i <= len(candidates)-2:
-                # candidate i + 1
-                candidate_i_1 = candidates[i + 1]
-                id_i_1 = candidate_i_1["id"]
-                annotation_candidate_i_1 = annotation_seq[id_i_1]
-                rank_i_1 = annotation_candidate_i_1["rank"]
-
-                # compare rank of i+1 to i
-                if abs(rank_i_1 - rank_i) <= 2:  # mix
-                    mixed_data_new = {
-                        "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
-                        "start_gene": mixed_data["start_gene"],
-                        "start": start_i,
-                        "end": annotation_candidate_i_1["end"],
-                        "rank": rank_i_1
-                    }
-                    mixed_data = mixed_data_new
-
-                else:
-                    candidate_data_mix[seq].append(mixed_data)
-                    # print(mixed_data["region_name"])
-                    mixed_data = {}
-
-    print("number", number)
-    return candidate_data_mix
-
-
 ####################################
+# data analysis
 #Select up and downstream positions
 def read_gtf(gtf_path, keep_type=None):
     """
-    Read a GTF/GFF file and organize it by seq_name.
+    Read a GTF/GFF file and organize it by seq_ID.
 
     :param gtf_path: path to the GTF/GFF file
     :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
-    :return: dict, {seq_name: [row_dict, ...]} sorted by start
+    :return: dict, {seq_ID: [row_dict, ...]} sorted by start
     """
     gtf_dict = defaultdict(list)
 
     with open(gtf_path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_name", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
         ])
 
         for row in reader:
-            if row["seq_name"].startswith("#"):
+            if row["seq_ID"].startswith("#"):
                 continue  # skip header/comment lines
             if keep_type and row["type"] != keep_type:
                 continue
@@ -419,7 +565,7 @@ def read_gtf(gtf_path, keep_type=None):
                     attr_dict[key] = value.strip('"')
 
             row_data = {
-                "seq_name": row["seq_name"],
+                "seq_ID": row["seq_ID"],
                 "type": row["type"],
                 "start": int(row["start"]),
                 "end": int(row["end"]),
@@ -427,7 +573,7 @@ def read_gtf(gtf_path, keep_type=None):
                 "transcript_id": attr_dict.get("transcript_id")
             }
 
-            gtf_dict[row["seq_name"]].append(row_data)
+            gtf_dict[row["seq_ID"]].append(row_data)
 
     # sort each row with the order of start position
     for seq in gtf_dict:
@@ -435,89 +581,7 @@ def read_gtf(gtf_path, keep_type=None):
 
     return dict(gtf_dict)
 
-def read_gff(gff_path, keep_type=None):
-    """
-    Read a GFF3 file and organize it by seq_name.
 
-    :param gff_path: path to the GFF3 file
-    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
-    :return: dict, {seq_name: [row_dict, ...]} sorted by start
-    """
-    gff_dict = defaultdict(list)
-
-    with open(gff_path, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_name", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
-        ])
-
-        for row in reader:
-            if row["seq_name"].startswith("#"):
-                continue  # skip header/comment lines
-            if keep_type and row["type"] != keep_type:
-                continue
-
-            # parse attributes (GFF3 format: key=value;key=value;...)
-            attr_dict = {}
-            for attr in row["attributes"].split(";"):
-                if attr.strip() == "":
-                    continue
-                if "=" in attr:
-                    key, value = attr.strip().split("=", 1)
-                    attr_dict[key] = value
-
-            row_data = {
-                "seq_name": row["seq_name"],
-                "type": row["type"],
-                "start": int(row["start"]),
-                "end": int(row["end"]),
-                "id": attr_dict.get("ID"),
-                "parent": attr_dict.get("Parent"),
-                "gene_id": attr_dict.get("gene_id"),         # 有些GFF也可能保留 GTF风格
-                "transcript_id": attr_dict.get("transcript_id")
-            }
-
-            gff_dict[row["seq_name"]].append(row_data)
-            #print(row_data)
-
-    # sort each list by start position
-    for seq in gff_dict:
-        gff_dict[seq].sort(key=lambda x: x["start"])
-
-    annotation_sorted = annotation_rank(dict(gff_dict))
-
-    return annotation_sorted
-
-def read_gff_dict(annotation_sorted):
-    """
-    Read a GFF3 file and organize it by seq_name.
-
-    :param gff_path: path to the GFF3 file
-    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
-    :return: dict, {seq_name: [row_dict, ...]} sorted by start
-    """
-    annotation_dict = {}
-    for seq, annotation_list in annotation_sorted.items():
-        annotation_dict[seq] = {}
-        for annotation in annotation_list:
-            annotation_id = annotation["transcript_id"]
-            annotation_dict[seq][annotation_id] = annotation
-
-    return annotation_dict
-
-def annotation_rank(annotation_sorted):
-    for chromosome, annotation_info in annotation_sorted.items():
-        i = 1
-        for annotation in annotation_info:
-            annotation["rank"] = i
-            i += 1
-    return annotation_sorted
-
-def dict_rows_transfer(rows):
-    rows_dict = {}
-    for row in rows:
-        name = row["Name"]
-        rows_dict[name] = row
-    return rows_dict
 
 def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num):
     """
@@ -527,6 +591,16 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     :param annotation_sorted: the sorted annotation dictionary.
     :param n: number of positions to identify at the up and down-stream positions.
     :return: up_down_locations: a dictionary with the location of input mRNA, its up and down-stream mRNA positions.
+    {
+        'position': {'seq_ID': 'NC_007195.1', 'start': 4650883, 'end': 4653737},
+        'type': 'mRNA',
+        'upstream_position': [
+            {'seq_ID': 'NC_007195.1', 'type': 'mRNA', 'start': 4643751, 'end': 4644257, 'id': 'rna-XM_750980.1',
+             'parent': 'gene-AFUA_2G17380', 'gene_id': None, 'transcript_id': 'XM_750980.1', 'rank': 1555}, ...],
+        'downstream_position': [
+            {'seq_ID': 'NC_007195.1', 'type': 'mRNA', 'start': 4653899, 'end': 4654978, 'id': 'rna-XM_750985.1',
+             'parent': 'gene-AFUA_2G17430', 'gene_id': None, 'transcript_id': 'XM_750985.1', 'rank': 1560}, ...]
+    }
     """
     annotation_sequences = annotation_sorted[sequence_id]
     annotation_length = len(annotation_sequences)
@@ -534,9 +608,6 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     down_position = 0
 
     for i in range(1, annotation_length):
-
-        annotation = annotation_sequences[i]
-
         if annotation_sequences[i-1]["start"] <= start <= annotation_sequences[i]["start"]:
             up_position = i
         if annotation_sequences[i-1]["end"] <= end <= annotation_sequences[i]["end"]:
@@ -568,7 +639,7 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
             for j in range(down_position + 1, annotation_length):  # n downstream positions
                 downstream_position.append(annotation_sequences[j])
         position_info = {
-            'seq_name': sequence_id,
+            'seq_ID': sequence_id,
             'start': start,
             'end': end
         }
@@ -584,14 +655,13 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     else:
         print(f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
 
-
 def find_position_depth(transcript_id, rows_dict):
     #print(transcript_id)
     pos_info = rows_dict[transcript_id]
     pos_depth = float(pos_info["depth"])
     return pos_depth
 
-def filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, cutoff = 10):
+def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff = 10):
     """
 
     :param up_down_locations:
@@ -601,6 +671,7 @@ def filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, cutoff 
     :param cutoff:
     :return:
     """
+    rows_dict = dict_rows_transfer(rows)
     upstream_position = up_down_locations["upstream_position"]
     downstream_position = up_down_locations["downstream_position"]
     sum_depth_up = 0
@@ -903,12 +974,21 @@ def count_aligned_reads(all_up_down_loci):
 
     return aligned_reads_number
 
-def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit):
+def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_path,assembly_path, up_num, down_num, lower_limit):
     """
-    Find the position data for each of the candidate positions.
-    :param candidate_data:
-    :param annotation_sorted:
-    :return: candidate_data_positions:
+    Analyze the position data for each of the candidate positions.
+    :param candidate_data: the merged candidate data.
+    :param annotation_sorted: genome annotation.
+    :return: candidate_data_positions: a list, including analysis results of the position data
+    [{
+        "region_name": XM_750984.1,
+        "candidate_data": candidate, # information of this candidate, {seq: [merged_info1, ...], ...}
+        "position_info": up_down_locations, # find upstream and downstream positions, dict
+        "align_info": up_down_alignment, # find reads aligned to these positions,dict
+        "status_info": all_status, # select assemblies and find whether they are present at these positions
+        "up_down_loci": all_up_down_loci, # the selected locations
+        "aligned_reads_number": aligned_reads_number
+    }, ......]
     """
     candidate_data_summary = []
     for seq_id,candidates in candidate_data.items():
@@ -924,7 +1004,8 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,ass
                 continue
 
             # check the mean depth of the positions
-            depth_status = filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)
+
+            depth_status = filter_up_down_depth(up_down_locations, rows, up_num, down_num, lower_limit)
             if depth_status == False:
                 continue
 
@@ -934,11 +1015,8 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,ass
             # identify status of random genome assemblies at the positions
             all_status = find_candidate_involvement(up_down_alignment)
 
-            # identify the nearest upstream and downstream loci
+            # identify the most distant upstream and downstream loci
             all_up_down_loci = find_up_down_loci(all_status, up_down_locations, up_down_alignment)
-            for key, value in all_up_down_loci.items():
-                #print(key,value)
-                continue
 
             aligned_reads_number = count_aligned_reads(all_up_down_loci)
 
@@ -947,33 +1025,48 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,bam_path,ass
             if all_aligned_reads_number < 15:
                 continue
 
+            # Check whether both alleles exist
+            ref_allele_info = all_up_down_loci["ref_up_down_loci"]
+            diff_allele_info = all_up_down_loci["diff_up_down_loci"]
+
+            if len(ref_allele_info) == 0 or len(diff_allele_info) == 0:
+                continue
+
             summary = {
                 "region_name": candidate["region_name"],
+                "candidate_data": candidate,
                 "position_info": up_down_locations,
                 "align_info": up_down_alignment,
                 "status_info": all_status,
                 "up_down_loci": all_up_down_loci,
                 "aligned_reads_number": aligned_reads_number
             }
+            for key, value in summary.items():
+                print(key, value)
+
+            #print("summary", summary["position_info"])
 
             candidate_data_summary.append(summary)
 
     return candidate_data_summary
 
-def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, contig, start, end, orientation, type_seq, output_path):
+#############################################################
+# extract the sequence of the allele genomic region for each genes.
+
+def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, contig, start, end, extend,orientation, type_seq, output_path):
     """
-    Extract allele sequence for a candidate gene from genome assembly.
-
-    Parameters:
-        candidate_gene (str): gene ID (e.g., "XM_743603.1")
-        genome_accession (str): genome accession (e.g., "GCA_051225625.1")
-        contig (str): contig name (e.g., "CP097565.1")
-        start (int): start position
-        end (int): end position
-        output_path (str): output folder path
-
-    Returns:
-        str: path of saved fasta file, or warning message if failed
+    Extract the sequence of specific position of a genome assembly
+    :param assembly_dir:
+    :param candidate_gene:
+    :param genome_accession:
+    :param contig:
+    :param start:
+    :param end:
+    :param extend:
+    :param orientation:
+    :param type_seq:
+    :param output_path:
+    :return:
     """
     # 0. finding genome assembly
     assembly_pattern = os.path.join(assembly_dir, f"{genome_accession}*.fna")
@@ -986,8 +1079,8 @@ def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, cont
     genome_assembly_path = matches[0]
 
     # 1. scale
-    seq_start = max(1, start - 5000)
-    seq_end = end + 5000
+    seq_start = max(1, start - extend)
+    seq_end = end + extend
 
     # 2. extract sequence
     target_seq = None
@@ -1020,7 +1113,7 @@ def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, cont
     print(f"Sequence saved to {output_file}")
     return output_file
 
-def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_path, assembly_num):
+def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_path, extend, assembly_num):
     allele_info_selected = random_select_assembly(allele_info, assembly_num)
 
     for genome, info in allele_info_selected.items():
@@ -1044,6 +1137,7 @@ def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_p
             seq_info,
             start_read,
             end_read,
+            extend,
             orientation,
             type_seq,
             output_path
@@ -1051,7 +1145,7 @@ def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_p
 
     return True
 
-def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, assembly_num):
+def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num):
     """
 
     :param reference_genome:
@@ -1074,12 +1168,8 @@ def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_pa
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
-        if len(ref_allele_info) == 0 or len(diff_allele_info) == 0:
-            continue
-
-        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, assembly_num)
-        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, assembly_num)
-        print(region_name, "finished")
+        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, extend,assembly_num)
+        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, extend,assembly_num)
 
     return True
 
@@ -1113,6 +1203,67 @@ def extract_reference():
 
                 """
 
+def find_final_candidates(candidate_data_summary, rows):
+    final_candidates = []
+    total_number = 0
+
+    for summary in candidate_data_summary:
+        region_info = summary["position_info"]["position"]
+        region_name = summary["region_name"]
+        #print("region_info", region_info)
+        region_seq = region_info["seq_ID"]
+        region_start = region_info["start"]
+        region_end = region_info["end"]
+
+        for row in rows:
+            candidate_seq = row["seq_ID"]
+            candidate_start = row["start"]
+            candidate_end = row["end"]
+            if candidate_seq == region_seq:
+                if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
+                    candidate_info = {
+                        "region_name": region_name,
+                        "gene_id": row["locus_tag"],
+                        "transcript_id": row["transcript_id"],
+                        "gene_info": row
+                    }
+                    final_candidates.append(candidate_info)
+
+    return final_candidates
+
+def save_final_candidates(final_candidates, output_path):
+    """
+    Save a list of candidate dictionaries to an Excel file.
+    Each dictionary becomes one row, and 'gene_info' (a nested dict)
+    is converted into a "key:value" comma-separated string.
+    """
+
+    # Ensure the output directory exists
+    os.makedirs(output_path, exist_ok=True)
+
+    processed_data = []
+
+    for item in final_candidates:
+        # Copy the item to avoid modifying the original list
+        row = item.copy()
+
+        # Convert 'gene_info' dict to a readable "key:value" string
+        if isinstance(row.get("gene_info"), dict):
+            row["gene_info"] = ", ".join([f"{k}: {v}" for k, v in row["gene_info"].items()])
+
+        processed_data.append(row)
+
+    # Create a DataFrame (keys automatically become column headers)
+    df = pd.DataFrame(processed_data)
+
+    # Build the output file path
+    output_file = os.path.join(output_path, "final_candidates.xlsx")
+
+    # Save to Excel (requires 'openpyxl' installed)
+    df.to_excel(output_file, index=False)
+
+    print(f"Final candidate data (genes) saved to: {output_file}")
+
 
 #file paths
 # The modified csv file that contains the mRNA with depth of interests.
@@ -1138,69 +1289,28 @@ down_num = 5
 assembly_num = 7
 lower_limit = 10
 upper_limit = 40
+extend = 5000
 reference_genome = "GCF_000002655.1"
 
 # processes the input candidate mRNAs
 # Input and output file paths
-rows,fieldnames = process_data(depth_path)
-print("rows",len(rows))
+rows = process_data(depth_path)
 filtered_rows = select_depth(rows,lower_limit,upper_limit) # the candidate mRNA data
-print("filtered_rows",len(filtered_rows))
-rows_dict = dict_rows_transfer(rows)
-
-candidate_data_list = extract_candidate_position_list(filtered_rows)
-print("candidate_data_list",len(candidate_data_list))
-
+#print("filtered_rows",len(filtered_rows))
+candidate_data_seq = extract_candidate_position_list(filtered_rows)
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
 annotation_sorted_dict = read_gff_dict(annotation_sorted)
 
-candidate_data_mix = mix_candidate_position(candidate_data_list, annotation_sorted_dict)
-#print(candidate_data_mix)
+candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
 
 # test the main code
-candidate_data_test = dict(list(candidate_data_mix.items())[0:])
+candidate_data_test = dict(list(candidate_merge.items())[0:5])
 # print(candidate_data_test)
-candidate_data_summary = analyze_all_candidate_position(candidate_data_test,
-            annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit)
-#print("candidate_data_summary", candidate_data_summary)
-# print(len(candidate_data_summary))
-gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, assembly_num)
-"""
+candidate_data_summary = analyze_all_candidate_position(candidate_data_test,annotation_sorted,rows,
+                                                        bam_path,assembly_path, up_num, down_num, lower_limit)
 
+gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
 
-#extract the up dan downstream positions
-up_down_locations_seq = find_position_seq("NC_007196.1",1524532,1525609, annotation_sorted, up_num, down_num)
-#print("up_down_locations_seq",up_down_locations_seq)
-up_down_alignment = find_candidate_align(up_down_locations_seq,bam_path,assembly_path)#
-
-
-selected_assemblies = random_select_assembly(up_down_alignment)
-all_status = find_candidate_involvement(up_down_alignment)
-up_down_loci = find_up_down_loci(all_status, up_down_locations,up_down_alignment)
-filter_up_down_depth(up_down_locations, rows_dict, up_num, down_num, lower_limit)
-
-
-
-#test
-output_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test_seq_5/MAT1-2-4_test2"
-candidate_data_test = {'XM_749897.2':
-                      {'seqid': 'NC_007196.1',
-                       'start': 1523105,
-                       'end': 1524006,
-                       'depth': '35.0000000',
-                       'id': 'XM_749897.2',
-                       'locus_tag': 'AFUA_3G06160'}}
-
-annotation_sorted = read_gff(gff_path, keep_type="mRNA")
-candidate_data_summary = analyze_all_candidate_position(candidate_data_test,
-            annotation_sorted,bam_path,assembly_path, up_num, down_num, lower_limit)
-print(candidate_data_summary )
-
-for gene,info in candidate_data_summary.items():
-    for key, value in info.items():
-        print(gene,key, value)
-
-
-#gene_between = find_allele_sequence_inbetween(bam_path, reference_genome, assembly_dir,candidate_data_summary,output_path, assembly_num)
-"""
-
+# find and save final candidate genes and related information
+final_candidates = find_final_candidates(candidate_data_summary, rows)
+save_final_candidates(final_candidates, output_path)
