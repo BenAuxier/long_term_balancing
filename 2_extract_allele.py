@@ -170,15 +170,13 @@ def read_gff(gff_path, keep_type=None):
                 if "=" in attr:
                     key, value = attr.strip().split("=", 1)
                     attr_dict[key] = value
-
             row_data = {
                 "seq_ID": row["seq_ID"],
                 "type": row["type"],
                 "start": int(row["start"]),
                 "end": int(row["end"]),
                 "id": attr_dict.get("ID"),
-                "parent": attr_dict.get("Parent"),
-                "gene_id": attr_dict.get("gene_id"),         # 有些GFF也可能保留 GTF风格
+                "locus_tag": attr_dict.get("locus_tag"),
                 "transcript_id": attr_dict.get("transcript_id")
             }
 
@@ -1041,10 +1039,6 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
                 "up_down_loci": all_up_down_loci,
                 "aligned_reads_number": aligned_reads_number
             }
-            for key, value in summary.items():
-                print(key, value)
-
-            #print("summary", summary["position_info"])
 
             candidate_data_summary.append(summary)
 
@@ -1053,67 +1047,72 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
 
-def extract_allele_sequence(assembly_dir, candidate_gene, genome_accession, contig, start, end, extend,orientation, type_seq, output_path):
+def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession, seq, start, end, orientation, output_path):
     """
     Extract the sequence of specific position of a genome assembly
     :param assembly_dir:
     :param candidate_gene:
     :param genome_accession:
-    :param contig:
+    :param seq:
     :param start:
     :param end:
-    :param extend:
     :param orientation:
-    :param type_seq:
     :param output_path:
     :return:
     """
-    # 0. finding genome assembly
-    assembly_pattern = os.path.join(assembly_dir, f"{genome_accession}*.fna")
-    matches = glob.glob(assembly_pattern)
-
-    if not matches:
-        warning = f"Warning: No genome assembly found for {genome_accession}"
-        print(warning)
-        #return warning
-    genome_assembly_path = matches[0]
-
-    # 1. scale
-    seq_start = max(1, start - extend)
-    seq_end = end + extend
-
-    # 2. extract sequence
+    # extract sequence
     target_seq = None
     for record in SeqIO.parse(genome_assembly_path, "fasta"):
         #print(record.id)
-        if contig in record.id:
+        if seq in record.id:
             #print("find")
-            target_seq = record.seq[seq_start - 1:seq_end]  # Biopython 序列是0-based
+            target_seq = record.seq[start - 1:end]  # Biopython is 0-based
             break
 
     if target_seq is None:
-        warning = f"Warning: Contig {contig} not found in {genome_accession}"
+        warning = f"Warning: Sequence {seq} not found in {genome_accession}"
         print(warning)
         return warning
 
     if orientation.lower() == "reverse":
         target_seq = target_seq.reverse_complement()
 
-    # 3. output path
+    # output path
     output_dir = os.path.join(output_path, candidate_gene)
     os.makedirs(output_dir, exist_ok=True)
 
-    output_file = os.path.join(output_dir, f"{candidate_gene}_{type_seq}_{genome_accession}_{contig}-{seq_start}-{seq_end}.fa")
+    output_file = os.path.join(output_dir, f"{candidate_gene}_{genome_accession}_{seq}-{start}-{end}.fa")
 
     # 4. save results
     with open(output_file, "w") as f:
-        f.write(f">{genome_accession}_{contig}:{seq_start}-{seq_end}\n")
+        f.write(f">{genome_accession}_{seq}:{start}-{end}\n")
         f.write(str(target_seq) + "\n")
 
     print(f"Sequence saved to {output_file}")
     return output_file
 
-def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_path, extend, assembly_num):
+def find_genome_assembly_path(assembly_dir, genome):
+    assembly_pattern = os.path.join(assembly_dir, f"{genome}*.fna")
+    matches = glob.glob(assembly_pattern)
+    if not matches:
+        warning = f"Warning: No genome assembly found for {genome}"
+        print(warning)
+        # return warning
+    genome_assembly_path = matches[0]
+    return genome_assembly_path
+
+def extract_region_seq(allele_info,region_name, assembly_dir, output_path, extend, assembly_num):
+    """
+    Extract the sequence of specific position of a genome assembly
+    :param allele_info:
+    :param region_name:
+    :param assembly_dir:
+    :param output_path:
+    :param extend:
+    :param assembly_num:
+    :return:
+    """
+
     allele_info_selected = random_select_assembly(allele_info, assembly_num)
 
     for genome, info in allele_info_selected.items():
@@ -1130,8 +1129,15 @@ def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_p
         #if end_read - start_read > 100000:
             #continue
 
+        # extend the start-end interval
+        start_read = max(1, start_read-extend)
+        end_read = end_read + extend # require modified
+
+        # finding genome assembly path
+        genome_assembly_path = find_genome_assembly_path(assembly_dir, genome)
+
         extract_allele_sequence(
-            assembly_dir,
+            genome_assembly_path,
             region_name,
             genome,
             seq_info,
@@ -1139,7 +1145,6 @@ def extract_region_seq(allele_info,region_name, type_seq, assembly_dir, output_p
             end_read,
             extend,
             orientation,
-            type_seq,
             output_path
         )
 
@@ -1168,40 +1173,99 @@ def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_pa
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
-        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, extend,assembly_num)
-        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, extend,assembly_num)
+        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, extend, assembly_num)
+        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, extend, assembly_num)
 
     return True
 
-def extract_reference():
+def extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly):
+    """
 
-    print("not finished")
-    """if seq_list != []:
-                # also extract the reference sequence
-                up_down_alignment = summary["align_info"]
-                seq_info_ref = up_down_alignment["position_assembly"]["involved_assembly"]["pos_info"]["seq"]
-                # for a, b in up_down_alignment.items():
-                # print(a,b)
+    :param candidate_data_summary:
+    :param reference_genome:
+    :param annotation_sorted: {seq_ID: [row_dict, ...]}
+    :param output_path:
+    :return:
+    """
+    for summary in candidate_data_summary:
+        region_name = summary["region_name"]
+        up_down_locations = summary["position_info"]
+        print(up_down_locations)
 
-                if up_down_alignment["upstream_position_assembly"] == [] or up_down_alignment[
-                    "downstream_position_assembly"] == []:
-                    continue
+        """"""
+        seq_info_ref = up_down_locations["position"]["seq_ID"]
+        start_ref = up_down_locations["upstream_position"][0]["start"]
+        end_ref = up_down_locations["downstream_position"][-1]["end"]
 
-                start_ref = up_down_alignment["upstream_position_assembly"][0]["pos_info"]["start"]
-                end_ref = up_down_alignment["downstream_position_assembly"][-1]["pos_info"]["end"]
-                extract_allele_sequence(
-                    assembly_dir,
-                    gene,
-                    reference_genome,
-                    seq_info_ref,
-                    start_ref,
-                    end_ref,
-                    "forward",
-                    "reference",
-                    output_path
-                )
+        #calculate the start and end position of the extraction region
+        # start position
+        start = max(1, start_ref - extend)
 
-                """
+        # end position
+        annotation_info = annotation_sorted[seq_info_ref]
+        annotation_end = annotation_info[-1]["end"]
+        end = min(end_ref + extend, annotation_end)
+
+        # extract the sequence from the reference genome
+        extract_allele_sequence(
+            ref_assembly,
+            f"{region_name}_reference_genome",
+            reference_genome,
+            seq_info_ref,
+            start,
+            end,
+            "forward",
+            output_path
+        )
+
+        # --- Read and filter GFF annotations ---
+        # annotation_sorted {seq_ID: [row_dict, ...]}
+        extract_annotation = []
+        for annotation in annotation_info:
+            start_anno = annotation["start"]
+            end_anno = annotation["end"]
+
+            if start_anno >= start and end_anno <= end:
+                extract_annotation.append(annotation)
+
+        #create output path for gff3 file
+        output_dir = os.path.join(output_path, region_name)
+        output_file = os.path.join(output_dir, f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
+
+        #write in gff3 formate file
+        with open(output_file, "w", encoding="utf-8", newline="") as out:
+            out.write("##gff-version 3\n")
+
+            writer = csv.writer(out, delimiter="\t", lineterminator="\n")
+
+            for ann in extract_annotation:
+                seq_ID = ann.get("seq_ID", ".")
+                source = ann.get("source", "extract")
+                type_ = ann.get("type", ".")
+                start = str(ann.get("start", "."))
+                end = str(ann.get("end", "."))
+                score = ann.get("score", ".")
+                strand = ann.get("strand", ".")
+                phase = ann.get("phase", ".")
+
+                # 拼接 attributes 字段
+                attrs = []
+                if ann.get("id"):
+                    attrs.append(f"ID={ann['id']}")
+                if ann.get("parent"):
+                    attrs.append(f"Parent={ann['parent']}")
+                if ann.get("gene_id"):
+                    attrs.append(f"gene_id={ann['gene_id']}")
+                if ann.get("transcript_id"):
+                    attrs.append(f"transcript_id={ann['transcript_id']}")
+                if ann.get("rank") is not None:
+                    attrs.append(f"rank={ann['rank']}")
+
+                attributes = ";".join(attrs) if attrs else "."
+
+                writer.writerow([seq_ID, source, type_, start, end, score, strand, phase, attributes])
+
+        print(f"GFF3 file successfully saved: {output_file}")
 
 def find_final_candidates(candidate_data_summary, rows):
     final_candidates = []
@@ -1271,6 +1335,8 @@ depth_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/tes
 # Reference genome annotation of the BAM file
 gtf_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.gtf"
 gff_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.gff"
+# Reference genome assembly
+ref_assembly = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.fna"
 
 # Bam file, used multiple genome assemblies align to the reference genome
 bam_path = ("/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/multi_align_2/40_assembly/normal_align/"
@@ -1301,6 +1367,12 @@ candidate_data_seq = extract_candidate_position_list(filtered_rows)
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
 annotation_sorted_dict = read_gff_dict(annotation_sorted)
 
+annotation_info = annotation_sorted["NC_007195.1"]
+for annotation in annotation_info:
+    for key, value in annotation.items():
+        print(f"{key}: {value}")
+        continue
+
 candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
 
 # test the main code
@@ -1309,8 +1381,10 @@ candidate_data_test = dict(list(candidate_merge.items())[0:5])
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test,annotation_sorted,rows,
                                                         bam_path,assembly_path, up_num, down_num, lower_limit)
 
-gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
+#gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
 
 # find and save final candidate genes and related information
-final_candidates = find_final_candidates(candidate_data_summary, rows)
-save_final_candidates(final_candidates, output_path)
+#final_candidates = find_final_candidates(candidate_data_summary, rows)
+#save_final_candidates(final_candidates, output_path)
+
+extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
