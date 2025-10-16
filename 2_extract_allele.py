@@ -1359,7 +1359,7 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
 
 
-# file paths
+# file paths, including all input files
 # The modified csv file that contains the mRNA with depth of interests.
 depth_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test3/all51_to_GCF_000002655.1_meandepth.txt"
 # Reference genome annotation of the BAM file
