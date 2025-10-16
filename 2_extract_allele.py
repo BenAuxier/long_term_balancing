@@ -64,7 +64,7 @@ def process_data(input_file):
                 row[key] = value
                 all_keys.add(key)
 
-            #select column
+            # select column
             keys_to_keep = ['seq_ID', 'type', 'start', 'end', 'strand', 'depth', 'Parent', 'Name',
                             'locus_tag', 'product', 'transcript_id']
             row_new = {}
@@ -74,7 +74,8 @@ def process_data(input_file):
             rows.append(row_new)
     return rows
 
-def select_depth(rows,lower_limit,upper_limit):
+
+def select_depth(rows, lower_limit, upper_limit):
     """
     Only keeps the rows with depth between lower_limit and upper_limit.
     :param rows:
@@ -94,6 +95,7 @@ def select_depth(rows,lower_limit,upper_limit):
 
     return filtered_rows
 
+
 def dict_rows_transfer(rows):
     """
     Transfer a list into dictionary
@@ -105,6 +107,7 @@ def dict_rows_transfer(rows):
         name = row["Name"]
         rows_dict[name] = row
     return rows_dict
+
 
 def extract_candidate_position_list(filtered_rows):
     """
@@ -140,6 +143,7 @@ def extract_candidate_position_list(filtered_rows):
         candidate_data_seq[row["seq_ID"]].append(row_data)
 
     return candidate_data_seq
+
 
 def read_gff(gff_path, keep_type=None):
     """
@@ -190,6 +194,7 @@ def read_gff(gff_path, keep_type=None):
 
     return annotation_sorted
 
+
 def annotation_rank(annotation_sorted):
     for chromosome, annotation_info in annotation_sorted.items():
         i = 1
@@ -197,6 +202,7 @@ def annotation_rank(annotation_sorted):
             annotation["rank"] = i
             i += 1
     return annotation_sorted
+
 
 def read_gff_dict(annotation_sorted):
     """
@@ -212,8 +218,6 @@ def read_gff_dict(annotation_sorted):
             annotation_dict[seq][annotation_id] = annotation
 
     return annotation_dict
-
-
 
 
 def merge_candidate_position(candidate_data_seq, annotation_dict):
@@ -321,13 +325,10 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
     return candidate_merge
 
 
-
-
-
 ####################################
 # Generate covered and uncovered genomes at one position.
 # Check sequences covered or uncovered on specific genomic region of BAM file
-def extract_align_seq(bam_path, seq, start, end, full_cover = True):
+def extract_align_seq(bam_path, seq, start, end, full_cover=True):
     """
     Extract the sequence name that are aligned to one genomic position (chr, start, end) of the BAM file.
     The sequences are from different genome assemblies.
@@ -354,8 +355,8 @@ def extract_align_seq(bam_path, seq, start, end, full_cover = True):
         # read.query_alignment_start / read.query_alignment_end are the aligned
         # positions on the read sequence
         # Coordinates are 0-based, left-inclusive and right-exclusive
-        #if read.is_unmapped or read.is_secondary or read.is_supplementary:
-            #continue
+        # if read.is_unmapped or read.is_secondary or read.is_supplementary:
+        # continue
 
         # Only reads that cover the interval 100% are retained
         if full_cover:
@@ -390,9 +391,10 @@ def extract_align_seq(bam_path, seq, start, end, full_cover = True):
         dic_align["orientation"] = orientation  # True if read aligns to reverse strand
 
         align_info["seq_info"].append(dic_align)
-    #print(len(align_info["seq_info"]))
+    # print(len(align_info["seq_info"]))
     bam.close()
     return align_info
+
 
 def find_read_corridinate(read, position):
     """
@@ -473,6 +475,7 @@ def extract_align_seq_from_dict(bam_path, position_info):
     align_info_B = extract_align_seq(bam_path, seq, start, end)
     return align_info_B
 
+
 def find_aligned_assembly(align_info):
     aligned_genome = []
     for seq_info in align_info["seq_info"]:
@@ -481,7 +484,8 @@ def find_aligned_assembly(align_info):
 
     return aligned_genome
 
-def find_not_aligned_assembly(aligned_genome,align_info, assembly_path):
+
+def find_not_aligned_assembly(aligned_genome, align_info, assembly_path):
     """
     Find the genome assemblies that are not aligned to one genomic position.
     :param align_info: The output of extract_align_seq, with the list (align_info["seq_info"])
@@ -491,22 +495,23 @@ def find_not_aligned_assembly(aligned_genome,align_info, assembly_path):
     :return: not_align_list, A list including all uncovered genome assemblies at the genomic position.
     """
 
-    #load the list including all genome assemblies
+    # load the list including all genome assemblies
     with open(assembly_path, "r", encoding="utf-8") as f:
         all_genome = [line.strip() for line in f]
-    #print(all_genome)
+    # print(all_genome)
     not_align_list = list(set(all_genome) - set(aligned_genome))
     position = align_info["pos_info"]
-    #print(f"Position on reference genome: sequence ID: {position['seq']}, "
-          #f"start position: {position['start']}, "
-          #f"end position: {position['end']}.\n"
-          #f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
-          #f"not aligned {len(not_align_list)} assemblies.")
+    # print(f"Position on reference genome: sequence ID: {position['seq']}, "
+    # f"start position: {position['start']}, "
+    # f"end position: {position['end']}.\n"
+    # f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
+    # f"not aligned {len(not_align_list)} assemblies.")
     return not_align_list
+
+
 #######################################
 
 # filter the input file it between up and down limits
-
 
 
 def extract_candidate_position(filtered_rows):
@@ -528,9 +533,10 @@ def extract_candidate_position(filtered_rows):
         candidate_data[row["Name"]] = row_data
     return candidate_data
 
+
 ####################################
 # data analysis
-#Select up and downstream positions
+# Select up and downstream positions
 def read_gtf(gtf_path, keep_type=None):
     """
     Read a GTF/GFF file and organize it by seq_ID.
@@ -580,7 +586,6 @@ def read_gtf(gtf_path, keep_type=None):
     return dict(gtf_dict)
 
 
-
 def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num):
     """
     Retrieve the positional information of the m upstream and n downstream mRNAs for a specified mRNA.
@@ -606,10 +611,10 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
     down_position = 0
 
     for i in range(1, annotation_length):
-        if annotation_sequences[i-1]["start"] <= start <= annotation_sequences[i]["start"]:
+        if annotation_sequences[i - 1]["start"] <= start <= annotation_sequences[i]["start"]:
             up_position = i
-        if annotation_sequences[i-1]["end"] <= end <= annotation_sequences[i]["end"]:
-            down_position = i-1
+        if annotation_sequences[i - 1]["end"] <= end <= annotation_sequences[i]["end"]:
+            down_position = i - 1
         if i == annotation_length - 1:
             break
 
@@ -651,15 +656,18 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
         return up_down_locations_seq
 
     else:
-        print(f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
+        print(
+            f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
+
 
 def find_position_depth(transcript_id, rows_dict):
-    #print(transcript_id)
+    # print(transcript_id)
     pos_info = rows_dict[transcript_id]
     pos_depth = float(pos_info["depth"])
     return pos_depth
 
-def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff = 10):
+
+def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff=10):
     """
 
     :param up_down_locations:
@@ -675,19 +683,18 @@ def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff = 10)
     sum_depth_up = 0
     sum_depth_down = 0
     for pos1 in upstream_position:
-        #print(pos1)
+        # print(pos1)
         transcript_id1 = pos1["transcript_id"]
         sum_depth_up += find_position_depth(transcript_id1, rows_dict)
     for pos2 in downstream_position:
         transcript_id2 = pos2["transcript_id"]
         sum_depth_down += find_position_depth(transcript_id2, rows_dict)
-    ave_depth_up = sum_depth_up/up_num
-    ave_depth_down = sum_depth_down/down_num
+    ave_depth_up = sum_depth_up / up_num
+    ave_depth_down = sum_depth_down / down_num
     if ave_depth_up >= cutoff or ave_depth_down >= cutoff:
         return True
     else:
         return False
-
 
 
 def find_candidate_align(up_down_locations, bam_path, assembly_path):
@@ -700,35 +707,37 @@ def find_candidate_align(up_down_locations, bam_path, assembly_path):
     down_gene_align, alignment at downstream positions
     """
     up_down_alignment = {}
-    position_info = up_down_locations["position"] # one dictionary, analysis both align and unaligned genomes
-    upstream_position = up_down_locations["upstream_position"] # list including dictionaries
-    downstream_position = up_down_locations["downstream_position"] # list including dictionaries
+    position_info = up_down_locations["position"]  # one dictionary, analysis both align and unaligned genomes
+    upstream_position = up_down_locations["upstream_position"]  # list including dictionaries
+    downstream_position = up_down_locations["downstream_position"]  # list including dictionaries
 
     # at the candidate position
     position_align_info = extract_align_seq_from_dict(bam_path, position_info)
     position_involved_assembly = find_aligned_assembly(position_align_info)
-    position_uninvolved_assembly = find_not_aligned_assembly(position_involved_assembly, position_align_info, assembly_path)
+    position_uninvolved_assembly = find_not_aligned_assembly(position_involved_assembly, position_align_info,
+                                                             assembly_path)
 
-    upstream_position_involved_assembly=[]
+    upstream_position_involved_assembly = []
     for pos_up in upstream_position:
         position_align_info_up = extract_align_seq_from_dict(bam_path, pos_up)
         upstream_position_involved_assembly.append(position_align_info_up)
 
-    downstream_position_involved_assembly=[]
+    downstream_position_involved_assembly = []
     for pos_down in downstream_position:
         position_align_info_down = extract_align_seq_from_dict(bam_path, pos_down)
         downstream_position_involved_assembly.append(position_align_info_down)
 
     up_down_alignment = {
-        "position_assembly": # at the candidate position
+        "position_assembly":  # at the candidate position
             {"involved_assembly": position_involved_assembly,
-            "uninvolved_assembly": position_uninvolved_assembly
+             "uninvolved_assembly": position_uninvolved_assembly
              },
         # aligned assemblies at the up and down positions
         "upstream_position_assembly": upstream_position_involved_assembly,
         "downstream_position_assembly": downstream_position_involved_assembly
     }
     return up_down_alignment
+
 
 # Function: randomly sample n unaligned sequences from the up_down_alignment of a given gene,
 # and then analyze the state at each position for each of them
@@ -759,6 +768,7 @@ def random_select_assembly(info_list, assembly_num):
 
     return info_selected
 
+
 def find_candidate_status(assembly, reads):
     status = []
     for positions in reads:  # analyze each position
@@ -770,6 +780,7 @@ def find_candidate_status(assembly, reads):
             status.append(False)
     return status
 
+
 def find_assembly_status(selected_assemblies, upstream_reads, downstream_reads):
     assemblies_status = {}
     for assembly in selected_assemblies:  # test each selected assembly in up and downstream positions
@@ -780,6 +791,7 @@ def find_assembly_status(selected_assemblies, upstream_reads, downstream_reads):
         assemblies_status[assembly] = assembly_status
 
     return assemblies_status
+
 
 # Finding whether the selected assemblies are involved in the positions.
 def find_candidate_involvement(up_down_alignment):
@@ -793,7 +805,7 @@ def find_candidate_involvement(up_down_alignment):
     assemblies_ref_allele = up_down_alignment["position_assembly"]["involved_assembly"]
     assemblies_diff_allele = up_down_alignment["position_assembly"]["uninvolved_assembly"]
 
-    #get the position information
+    # get the position information
     upstream_reads = up_down_alignment["upstream_position_assembly"]
     downstream_reads = up_down_alignment["downstream_position_assembly"]
 
@@ -803,7 +815,8 @@ def find_candidate_involvement(up_down_alignment):
     }
     return all_status
 
-def find_up_down_loci_one_status(one_status, up_down_locations,up_down_alignment): #
+
+def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignment):  #
     """
 
     :param all_status:
@@ -817,12 +830,12 @@ def find_up_down_loci_one_status(one_status, up_down_locations,up_down_alignment
     downstream_positions = up_down_locations["downstream_position"]
     # the aligned genomes onto the locus
     upstream_align = up_down_alignment["upstream_position_assembly"]
-    #print(upstream_align)
+    # print(upstream_align)
     downstream_align = up_down_alignment["downstream_position_assembly"]
 
     for genome_id, status in one_status.items():
 
-        #print(genome_id,status)
+        # print(genome_id,status)
         loci_selected = {}
         upstream_status = status["upstream_status"]
         downstream_status = status["downstream_status"]
@@ -910,7 +923,7 @@ def find_up_down_loci_one_status(one_status, up_down_locations,up_down_alignment
 
                 read_interval = abs(read_down_position["end"] - read_up_position["start"])
                 loci_selected["read_interval"] = read_interval
-                #print(read_up_position,'\t',read_down_position, interval)
+                # print(read_up_position,'\t',read_down_position, interval)
 
                 # calculate interval between two reference genes in reference genome
                 ref_up_position = loci_selected["upstream_ref_position"]
@@ -918,15 +931,16 @@ def find_up_down_loci_one_status(one_status, up_down_locations,up_down_alignment
                 ref_interval = ref_down_position["end"] - ref_up_position["start"]
                 loci_selected["ref_interval"] = ref_interval
 
-                interval_diff_pct = abs(ref_interval-read_interval)*100/ref_interval
+                interval_diff_pct = abs(ref_interval - read_interval) * 100 / ref_interval
                 loci_selected["interval difference(%)"] = interval_diff_pct
 
         up_down_loci[genome_id] = loci_selected
-        #print(loci_selected)
+        # print(loci_selected)
 
     return up_down_loci
 
-def filter_up_down_loci(up_down_loci, interval_difference = 250):
+
+def filter_up_down_loci(up_down_loci, interval_difference=250):
     filtered_up_down_loci = {}
     for genome_id, loci_selected in up_down_loci.items():
         skip_loop = False
@@ -943,11 +957,12 @@ def filter_up_down_loci(up_down_loci, interval_difference = 250):
 
     return filtered_up_down_loci
 
-def find_up_down_loci(all_status, up_down_locations,up_down_alignment):
+
+def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
     ref_allele_status = all_status["ref_allele"]
     diff_allele_status = all_status["diff_allele"]
 
-    ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations,up_down_alignment)
+    ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations, up_down_alignment)
     ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
     diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
     diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)
@@ -957,6 +972,7 @@ def find_up_down_loci(all_status, up_down_locations,up_down_alignment):
     }
 
     return all_up_down_loci
+
 
 def count_aligned_reads(all_up_down_loci):
     # count the number of reads completely aligned to the interval.
@@ -972,7 +988,9 @@ def count_aligned_reads(all_up_down_loci):
 
     return aligned_reads_number
 
-def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_path,assembly_path, up_num, down_num, lower_limit):
+
+def analyze_all_candidate_position(candidate_data, annotation_sorted, rows, bam_path, assembly_path, up_num, down_num,
+                                   lower_limit):
     """
     Analyze the position data for each of the candidate positions.
     :param candidate_data: the merged candidate data.
@@ -989,7 +1007,7 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
     }, ......]
     """
     candidate_data_summary = []
-    for seq_id,candidates in candidate_data.items():
+    for seq_id, candidates in candidate_data.items():
 
         for candidate in candidates:
             sequence_id = seq_id
@@ -998,7 +1016,7 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
             # finding the up and downstream positions
             up_down_locations = find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num)
 
-            if up_down_locations  == None:
+            if up_down_locations == None:
                 continue
 
             # check the mean depth of the positions
@@ -1018,7 +1036,7 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
 
             aligned_reads_number = count_aligned_reads(all_up_down_loci)
 
-            #Filter the complicated genomic region where not many reads completely aligned to
+            # Filter the complicated genomic region where not many reads completely aligned to
             all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
             if all_aligned_reads_number < 15:
                 continue
@@ -1044,10 +1062,12 @@ def analyze_all_candidate_position(candidate_data,annotation_sorted,rows, bam_pa
 
     return candidate_data_summary
 
+
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
 
-def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession, seq, start, end, orientation, output_path):
+def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession, seq, start, end, orientation,
+                            output_path):
     """
     Extract the sequence of specific position of a genome assembly
     :param assembly_dir:
@@ -1063,9 +1083,9 @@ def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accessi
     # extract sequence
     target_seq = None
     for record in SeqIO.parse(genome_assembly_path, "fasta"):
-        #print(record.id)
+        # print(record.id)
         if seq in record.id:
-            #print("find")
+            # print("find")
             target_seq = record.seq[start - 1:end]  # Biopython is 0-based
             break
 
@@ -1091,6 +1111,7 @@ def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accessi
     print(f"Sequence saved to {output_file}")
     return output_file
 
+
 def find_genome_assembly_path(assembly_dir, genome):
     assembly_pattern = os.path.join(assembly_dir, f"{genome}*.fna")
     matches = glob.glob(assembly_pattern)
@@ -1101,7 +1122,8 @@ def find_genome_assembly_path(assembly_dir, genome):
     genome_assembly_path = matches[0]
     return genome_assembly_path
 
-def extract_region_seq(allele_info,region_name, assembly_dir, output_path, extend, assembly_num):
+
+def extract_region_seq(allele_info, region_name, assembly_dir, output_path, extend, assembly_num):
     """
     Extract the sequence of specific position of a genome assembly
     :param allele_info:
@@ -1126,12 +1148,12 @@ def extract_region_seq(allele_info,region_name, assembly_dir, output_path, exten
         end_read = max(upstream_read_position["end"], downstream_read_position["end"])
         orientation = upstream_read_position["orientation"]
 
-        #if end_read - start_read > 100000:
-            #continue
+        # if end_read - start_read > 100000:
+        # continue
 
         # extend the start-end interval
-        start_read = max(1, start_read-extend)
-        end_read = end_read + extend # require modified
+        start_read = max(1, start_read - extend)
+        end_read = end_read + extend  # require modified
 
         # finding genome assembly path
         genome_assembly_path = find_genome_assembly_path(assembly_dir, genome)
@@ -1150,7 +1172,8 @@ def extract_region_seq(allele_info,region_name, assembly_dir, output_path, exten
 
     return True
 
-def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num):
+
+def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_path, extend, assembly_num):
     """
 
     :param reference_genome:
@@ -1167,18 +1190,22 @@ def find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_pa
     :param output_path:
     :return:
     """
-    for summary in candidate_data_summary: # the summary information of each candidate gene
+    for summary in candidate_data_summary:  # the summary information of each candidate gene
         region_name = summary["region_name"]
 
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
-        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele",assembly_dir, output_path, extend, assembly_num)
-        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele",assembly_dir, output_path, extend, assembly_num)
+        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
+                                         assembly_num)
+        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele", assembly_dir, output_path,
+                                          extend, assembly_num)
 
     return True
 
-def extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly):
+
+def extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend,
+                             ref_assembly):
     """
 
     :param candidate_data_summary:
@@ -1197,7 +1224,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         start_ref = up_down_locations["upstream_position"][0]["start"]
         end_ref = up_down_locations["downstream_position"][-1]["end"]
 
-        #calculate the start and end position of the extraction region
+        # calculate the start and end position of the extraction region
         # start position
         start = max(1, start_ref - extend)
 
@@ -1228,11 +1255,12 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
             if start_anno >= start and end_anno <= end:
                 extract_annotation.append(annotation)
 
-        #create output path for gff3 file
+        # create output path for gff3 file
         output_dir = os.path.join(output_path, region_name)
-        output_file = os.path.join(output_dir, f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
+        output_file = os.path.join(output_dir,
+                                   f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
 
-        #write in gff3 formate file
+        # write in gff3 formate file
         with open(output_file, "w", encoding="utf-8", newline="") as out:
             out.write("##gff-version 3\n")
 
@@ -1265,7 +1293,8 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
 
                 writer.writerow([seq_ID, source, type_, start, end, score, strand, phase, attributes])
 
-        print(f"GFF3 file successfully saved: {output_file}")
+        print(f"✅ GFF3 file successfully saved: {output_file}")
+
 
 def find_final_candidates(candidate_data_summary, rows):
     final_candidates = []
@@ -1274,7 +1303,7 @@ def find_final_candidates(candidate_data_summary, rows):
     for summary in candidate_data_summary:
         region_info = summary["position_info"]["position"]
         region_name = summary["region_name"]
-        #print("region_info", region_info)
+        # print("region_info", region_info)
         region_seq = region_info["seq_ID"]
         region_start = region_info["start"]
         region_end = region_info["end"]
@@ -1294,6 +1323,7 @@ def find_final_candidates(candidate_data_summary, rows):
                     final_candidates.append(candidate_info)
 
     return final_candidates
+
 
 def save_final_candidates(final_candidates, output_path):
     """
@@ -1329,7 +1359,7 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
 
 
-#file paths
+# file paths
 # The modified csv file that contains the mRNA with depth of interests.
 depth_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test3/all51_to_GCF_000002655.1_meandepth.txt"
 # Reference genome annotation of the BAM file
@@ -1348,7 +1378,6 @@ assembly_dir = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/multi_align_2/40
 # output base path of the fasta files
 output_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test4_extract_seq/extract_allele"
 
-
 # settings
 up_num = 5
 down_num = 5
@@ -1361,8 +1390,8 @@ reference_genome = "GCF_000002655.1"
 # processes the input candidate mRNAs
 # Input and output file paths
 rows = process_data(depth_path)
-filtered_rows = select_depth(rows,lower_limit,upper_limit) # the candidate mRNA data
-#print("filtered_rows",len(filtered_rows))
+filtered_rows = select_depth(rows, lower_limit, upper_limit)  # the candidate mRNA data
+# print("filtered_rows",len(filtered_rows))
 candidate_data_seq = extract_candidate_position_list(filtered_rows)
 annotation_sorted = read_gff(gff_path, keep_type="mRNA")
 annotation_sorted_dict = read_gff_dict(annotation_sorted)
@@ -1378,13 +1407,13 @@ candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted
 # test the main code
 candidate_data_test = dict(list(candidate_merge.items())[0:5])
 # print(candidate_data_test)
-candidate_data_summary = analyze_all_candidate_position(candidate_data_test,annotation_sorted,rows,
-                                                        bam_path,assembly_path, up_num, down_num, lower_limit)
+candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, rows,
+                                                        bam_path, assembly_path, up_num, down_num, lower_limit)
 
-#gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
+# gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
 
 # find and save final candidate genes and related information
-#final_candidates = find_final_candidates(candidate_data_summary, rows)
-#save_final_candidates(final_candidates, output_path)
+# final_candidates = find_final_candidates(candidate_data_summary, rows)
+# save_final_candidates(final_candidates, output_path)
 
 extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
