@@ -176,12 +176,16 @@ def read_gff(gff_path, keep_type=None):
                     attr_dict[key] = value
             row_data = {
                 "seq_ID": row["seq_ID"],
+                "source": row["source"],
                 "type": row["type"],
                 "start": int(row["start"]),
                 "end": int(row["end"]),
+                "score": row["score"],
+                "strand": row["strand"],
                 "id": attr_dict.get("ID"),
                 "locus_tag": attr_dict.get("locus_tag"),
-                "transcript_id": attr_dict.get("transcript_id")
+                "transcript_id": attr_dict.get("transcript_id"),
+                "attributes": row["attributes"]
             }
 
             gff_dict[row["seq_ID"]].append(row_data)
@@ -1123,7 +1127,7 @@ def find_genome_assembly_path(assembly_dir, genome):
     return genome_assembly_path
 
 
-def extract_region_seq(allele_info, region_name, assembly_dir, output_path, extend, assembly_num):
+def extract_region_seq(allele_info, region_name, label, assembly_dir, output_path, extend, assembly_num):
     """
     Extract the sequence of specific position of a genome assembly
     :param allele_info:
@@ -1161,11 +1165,10 @@ def extract_region_seq(allele_info, region_name, assembly_dir, output_path, exte
         extract_allele_sequence(
             genome_assembly_path,
             region_name,
-            genome,
+            f"{label}_{genome}",
             seq_info,
             start_read,
             end_read,
-            extend,
             orientation,
             output_path
         )
@@ -1236,8 +1239,8 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         # extract the sequence from the reference genome
         extract_allele_sequence(
             ref_assembly,
-            f"{region_name}_reference_genome",
-            reference_genome,
+            region_name,
+            f"reference_genome_{reference_genome}",
             seq_info_ref,
             start,
             end,
@@ -1253,6 +1256,8 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
             end_anno = annotation["end"]
 
             if start_anno >= start and end_anno <= end:
+                annotation["start"] = annotation["start"] - start + 1
+                annotation["end"] = annotation["end"] - start + 1
                 extract_annotation.append(annotation)
 
         # create output path for gff3 file
@@ -1268,32 +1273,19 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
 
             for ann in extract_annotation:
                 seq_ID = ann.get("seq_ID", ".")
-                source = ann.get("source", "extract")
+                source = ann.get("source", ".")
                 type_ = ann.get("type", ".")
                 start = str(ann.get("start", "."))
                 end = str(ann.get("end", "."))
                 score = ann.get("score", ".")
                 strand = ann.get("strand", ".")
-                phase = ann.get("phase", ".")
+                phase = ann.get("phase", ".")  # do not have phase，fill in "."
+                attributes = ann.get("attributes", ".")
 
-                # 拼接 attributes 字段
-                attrs = []
-                if ann.get("id"):
-                    attrs.append(f"ID={ann['id']}")
-                if ann.get("parent"):
-                    attrs.append(f"Parent={ann['parent']}")
-                if ann.get("gene_id"):
-                    attrs.append(f"gene_id={ann['gene_id']}")
-                if ann.get("transcript_id"):
-                    attrs.append(f"transcript_id={ann['transcript_id']}")
-                if ann.get("rank") is not None:
-                    attrs.append(f"rank={ann['rank']}")
-
-                attributes = ";".join(attrs) if attrs else "."
-
+                # write in file
                 writer.writerow([seq_ID, source, type_, start, end, score, strand, phase, attributes])
 
-        print(f"✅ GFF3 file successfully saved: {output_file}")
+        print(f"GFF3 file successfully saved: {output_file}")
 
 
 def find_final_candidates(candidate_data_summary, rows):
@@ -1405,15 +1397,17 @@ for annotation in annotation_info:
 candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
 
 # test the main code
-candidate_data_test = dict(list(candidate_merge.items())[0:5])
+candidate_data_test = dict(list(candidate_merge.items())[0:])
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, rows,
                                                         bam_path, assembly_path, up_num, down_num, lower_limit)
 
-# gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
+#gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
 
 # find and save final candidate genes and related information
-# final_candidates = find_final_candidates(candidate_data_summary, rows)
-# save_final_candidates(final_candidates, output_path)
+#final_candidates = find_final_candidates(candidate_data_summary, rows)
+#save_final_candidates(final_candidates, output_path)
 
 extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
+"""
+"""
