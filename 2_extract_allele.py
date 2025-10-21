@@ -10,6 +10,7 @@ import random
 import os
 import glob
 from Bio import SeqIO
+from extract_allele_function_1 import function_1
 
 ##########################################################
 # 1. process depth result data
