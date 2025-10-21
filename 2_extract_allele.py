@@ -1263,7 +1263,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         # create output path for gff3 file
         output_dir = os.path.join(output_path, region_name)
         output_file = os.path.join(output_dir,
-                                   f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
+                    f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
 
         # write in gff3 formate file
         with open(output_file, "w", encoding="utf-8", newline="") as out:
@@ -1407,6 +1407,9 @@ candidate_data_summary = analyze_all_candidate_position(candidate_data_test, ann
 # find and save final candidate genes and related information
 #final_candidates = find_final_candidates(candidate_data_summary, rows)
 #save_final_candidates(final_candidates, output_path)
+
+#first annotate the results
+
 
 extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
 """
