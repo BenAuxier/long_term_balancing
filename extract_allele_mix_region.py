@@ -12,7 +12,7 @@ def process_data(input_file):
     """
     Process the depth data from a txt file (input_file).
     :param input_file: path to the analysis result (depth of alignment at each position).
-    :return: rows: all rows of the txt file. Example:
+    :return: candidate_data: all candidate_data of the txt file. Example:
     [{'seq_ID': 'NC_007194.1',
      'type': 'mRNA',
      'start': 216,
@@ -27,7 +27,7 @@ def process_data(input_file):
      """
 
     # Read and process data
-    rows = []
+    candidate_data = []
     all_keys = set()
 
     with open(input_file, "r", encoding="utf-8") as f:
@@ -66,48 +66,48 @@ def process_data(input_file):
             for key in keys_to_keep:
                 row_new[key] = row[key]
 
-            rows.append(row_new)
-    return rows
+            candidate_data.append(row_new)
+    return candidate_data
 
 
-def select_depth(rows, lower_limit, upper_limit):
+def select_depth(candidate_data, lower_limit, upper_limit):
     """
-    Only keeps the rows with depth between lower_limit and upper_limit.
-    :param rows:
+    Only keeps the candidate_data with depth between lower_limit and upper_limit.
+    :param candidate_data:
     :param lower_limit:
     :param upper_limit:
-    :return: filtered_rows, same as rows, a list including
+    :return: filtered_candidate_data, same as candidate_data, a list including
     dictionaries for each mRNA position
     """
 
-    filtered_rows = []
-    for row in rows:
+    filtered_candidate_data = []
+    for row in candidate_data:
         depth = row["depth"]
         depth = float(depth)
         if lower_limit < depth < upper_limit:
             # print(row)
-            filtered_rows.append(row)
+            filtered_candidate_data.append(row)
 
-    return filtered_rows
+    return filtered_candidate_data
 
 
-def dict_rows_transfer(rows):
+def dict_candidate_data_transfer(candidate_data):
     """
     Transfer a list into dictionary
-    :param rows: a list including dictionaries for each mRNA position
+    :param candidate_data: a list including dictionaries for each mRNA position
     :return: a dictionary including dictionaries for each mRNA position
     """
-    rows_dict = {}
-    for row in rows:
+    candidate_data_dict = {}
+    for row in candidate_data:
         name = row["Name"]
-        rows_dict[name] = row
-    return rows_dict
+        candidate_data_dict[name] = row
+    return candidate_data_dict
 
 
-def extract_candidate_position_list(filtered_rows):
+def extract_candidate_position_list(filtered_candidate_data):
     """
     Transfer the list to a dictionary, only keep the necessary information
-    :param filtered_rows: A list including each rows as a dictionary.
+    :param filtered_candidate_data: A list including each candidate_data as a dictionary.
     :return: candidate_data_seq, a dictionary, with key:value =
     sequence_id : [candiate_info1, candiate_info2, ...]
 
@@ -123,7 +123,7 @@ def extract_candidate_position_list(filtered_rows):
 
     """
     candidate_data_seq = {}
-    for row in filtered_rows:
+    for row in filtered_candidate_data:
         if not row["seq_ID"] in candidate_data_seq.keys():
             candidate_data_seq[row["seq_ID"]] = []
 
@@ -242,7 +242,12 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
     return candidate_merge
 
-
+def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict):
+    candidate_data = process_data(depth_path)
+    filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
+    candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
+    candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
+    return candidate_merge
 
 
 

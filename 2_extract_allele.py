@@ -10,7 +10,8 @@ import random
 import os
 import glob
 from Bio import SeqIO
-import extract_allele_mix_region
+from extract_allele_mix_region import process_results
+from extract_allele_mix_region import process_data
 #########################################################
 
 
@@ -204,14 +205,14 @@ def find_not_aligned_assembly(aligned_genome, align_info, assembly_path):
 # filter the input file it between up and down limits
 
 
-def extract_candidate_position(filtered_rows):
+def extract_candidate_position(filtered_candidate_data):
     """
     Extract the necessary position information from the filtered data.
-    :param filtered_rows: A list including each rows as a dictionary.
+    :param filtered_candidate_data: A list including each candidate_data as a dictionary.
     :return: candidate_data, a dictionary, including each mRNA candidates and its information as key-value pairs.
     """
     candidate_data = {}
-    for row in filtered_rows:
+    for row in filtered_candidate_data:
         row_data = {
             "seq_ID": row["seq_ID"],
             "start": row["start"],
@@ -232,7 +233,7 @@ def read_gtf(gtf_path, keep_type=None):
     Read a GTF/GFF file and organize it by seq_ID.
 
     :param gtf_path: path to the GTF/GFF file
-    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
+    :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
     :return: dict, {seq_ID: [row_dict, ...]} sorted by start
     """
     gtf_dict = defaultdict(list)
@@ -350,24 +351,24 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
             f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
 
 
-def find_position_depth(transcript_id, rows_dict):
+def find_position_depth(transcript_id, candidate_data_dict):
     # print(transcript_id)
-    pos_info = rows_dict[transcript_id]
+    pos_info = candidate_data_dict[transcript_id]
     pos_depth = float(pos_info["depth"])
     return pos_depth
 
 
-def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff=10):
+def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff=10):
     """
 
     :param up_down_locations:
-    :param rows_dict:
+    :param candidate_data_dict:
     :param up_num:
     :param down_num:
     :param cutoff:
     :return:
     """
-    rows_dict = dict_rows_transfer(rows)
+    candidate_data_dict = dict_candidate_data_transfer(candidate_data)
     upstream_position = up_down_locations["upstream_position"]
     downstream_position = up_down_locations["downstream_position"]
     sum_depth_up = 0
@@ -375,10 +376,10 @@ def filter_up_down_depth(up_down_locations, rows, up_num, down_num, cutoff=10):
     for pos1 in upstream_position:
         # print(pos1)
         transcript_id1 = pos1["transcript_id"]
-        sum_depth_up += find_position_depth(transcript_id1, rows_dict)
+        sum_depth_up += find_position_depth(transcript_id1, candidate_data_dict)
     for pos2 in downstream_position:
         transcript_id2 = pos2["transcript_id"]
-        sum_depth_down += find_position_depth(transcript_id2, rows_dict)
+        sum_depth_down += find_position_depth(transcript_id2, candidate_data_dict)
     ave_depth_up = sum_depth_up / up_num
     ave_depth_down = sum_depth_down / down_num
     if ave_depth_up >= cutoff or ave_depth_down >= cutoff:
@@ -679,7 +680,7 @@ def count_aligned_reads(all_up_down_loci):
     return aligned_reads_number
 
 
-def analyze_all_candidate_position(candidate_data, annotation_sorted, rows, bam_path, assembly_path, up_num, down_num,
+def analyze_all_candidate_position(candidate_data, annotation_sorted, candidate_data, bam_path, assembly_path, up_num, down_num,
                                    lower_limit):
     """
     Analyze the position data for each of the candidate positions.
@@ -711,7 +712,7 @@ def analyze_all_candidate_position(candidate_data, annotation_sorted, rows, bam_
 
             # check the mean depth of the positions
 
-            depth_status = filter_up_down_depth(up_down_locations, rows, up_num, down_num, lower_limit)
+            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit)
             if depth_status == False:
                 continue
 
@@ -974,7 +975,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         print(f"GFF3 file successfully saved: {output_file}")
 
 
-def find_final_candidates(candidate_data_summary, rows):
+def find_final_candidates(candidate_data_summary, candidate_data):
     final_candidates = []
     total_number = 0
 
@@ -986,7 +987,7 @@ def find_final_candidates(candidate_data_summary, rows):
         region_start = region_info["start"]
         region_end = region_info["end"]
 
-        for row in rows:
+        for row in candidate_data:
             candidate_seq = row["seq_ID"]
             candidate_start = row["start"]
             candidate_end = row["end"]
@@ -1072,7 +1073,7 @@ def read_gff(gff_path, keep_type=None):
     Read a GFF3 file and organize it by seq_ID.
 
     :param gff_path: path to the GFF3 file
-    :param keep_type: optional, only keep rows with this feature type (e.g., "exon")
+    :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
     :return: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
     """
     gff_dict = defaultdict(list)
@@ -1150,28 +1151,26 @@ annotation_sorted_dict = read_gff_dict(annotation_sorted)
 
 # processes the input candidate mRNAs
 # Input and output file paths
-rows = process_data(depth_path)
-filtered_rows = select_depth(rows, lower_limit, upper_limit)  # the candidate mRNA data
-candidate_data_seq = extract_candidate_position_list(filtered_rows)
-candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
-
-
+candidate_data = process_data(depth_path)
+candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
+print(candidate_merge)
+print("finished")
 
 # test the main code
-candidate_data_test = dict(list(candidate_merge.items())[0:])
+#candidate_data_test = dict(list(candidate_merge.items())[0:])
 # print(candidate_data_test)
-candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, rows,
-                                                        bam_path, assembly_path, up_num, down_num, lower_limit)
+#candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,
+#                                                        bam_path, assembly_path, up_num, down_num, lower_limit)
 
 #gene_between = find_allele_sequence_inbetween(assembly_dir,candidate_data_summary,output_path, extend, assembly_num)
 
 # find and save final candidate genes and related information
-#final_candidates = find_final_candidates(candidate_data_summary, rows)
+#final_candidates = find_final_candidates(candidate_data_summary, candidate_data)
 #save_final_candidates(final_candidates, output_path)
 
 #first annotate the results
 
 
-extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
+#extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend, ref_assembly)
 """
 """
