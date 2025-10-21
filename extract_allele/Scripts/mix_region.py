@@ -1,12 +1,3 @@
-import csv
-import pysam
-import pandas as pd
-from collections import defaultdict
-import random
-import os
-import glob
-from Bio import SeqIO
-
 # 1. process depth result data
 def process_data(input_file):
     """

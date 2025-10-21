@@ -1,3 +1,7 @@
+import csv
+from collections import defaultdict
+
+
 # load annotation
 def read_gff(gff_path, keep_type=None):
     """
@@ -78,7 +82,7 @@ def read_gff_dict(annotation_sorted):
     return annotation_dict
 
 
-def load_annotation(gff_path):
+def load_annotation(gff_path, keep_type):
     annotation_sorted = read_gff(gff_path, keep_type="mRNA")
     annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict

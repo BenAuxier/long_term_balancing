@@ -1,3 +1,10 @@
+import csv
+import pysam
+from collections import defaultdict
+import random
+from mix_region import dict_candidate_data_transfer
+
+
 # Generate covered and uncovered genomes at one position.
 # Check sequences covered or uncovered on specific genomic region of BAM file
 def extract_align_seq(bam_path, seq, start, end, full_cover=True):
