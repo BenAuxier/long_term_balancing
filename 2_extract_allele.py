@@ -10,7 +10,7 @@ import random
 import os
 import glob
 from Bio import SeqIO
-import extract_allele_function_1
+import extract_allele_mix_region
 #########################################################
 
 

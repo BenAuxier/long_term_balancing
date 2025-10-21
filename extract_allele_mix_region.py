@@ -238,7 +238,6 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
                 else:
                     candidate_merge[seq].append(mixed_data)
-                    # print(mixed_data["region_name"])
                     mixed_data = {}
 
     return candidate_merge
