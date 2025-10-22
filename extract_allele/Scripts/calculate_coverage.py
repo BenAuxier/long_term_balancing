@@ -30,7 +30,7 @@ def run_bedtools_coverage(gff_file: str, bam_file: str, output_file: str):
 
 if __name__ == "__main__":
     # Example usage
-    gff_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_genomic.gff"
+    gff_path = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/reference/GCF_000002655.1_ASM265v1_mRNA.gff"
     bam_path = ("/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/multi_align_2/40_assembly/normal_align/"
                 "all51_to_GCF_000002655.1_asm5.sorted.bam")
 
