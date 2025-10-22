@@ -4,7 +4,7 @@ import zipfile
 import shutil
 import glob
 
-def download_genomes(assembly_list: str, assembly_dir: str):
+def download_genomes(main_path: str):
     """
     Download genome assemblies from NCBI using accession numbers listed in a text file.
 
@@ -12,6 +12,11 @@ def download_genomes(assembly_list: str, assembly_dir: str):
         assembly_list (str): Path to the text file containing one accession per line.
         assembly_dir (str): Directory to store the downloaded genome FASTA files.
     """
+
+    assembly_dir = f"{main_path}/genome_assemblies"
+
+    # need to be created manually!!
+    assembly_list = f"{assembly_dir}/genome_accessions.txt"
 
     # Create output directory if it does not exist
     os.makedirs(assembly_dir, exist_ok=True)
@@ -66,6 +71,7 @@ def download_genomes(assembly_list: str, assembly_dir: str):
                 os.remove(zip_path)
 
     print("\n🎉 All downloads completed successfully.")
+    return assembly_dir, assembly_list
 
 def download_reference_genome(reference_genome: str, assembly_dir: str):
     """
@@ -78,7 +84,7 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
     Returns:
         tuple: Paths to the downloaded FASTA (.fna) and GFF (.gff) files.
     """
-    reference_path = f"{assembly_dir}/reference_genome"
+    output_dir = f"{assembly_dir}/reference_genome"
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -151,7 +157,7 @@ def extract_mrna_annotations(input_gff: str, type_annotation: str):
         input_gff (str): Path to the input GFF file (e.g., "GCF_000002655.1_ASM265v1_genomic.gff")
         output_gff (str): Path to the output file (e.g., "GCF_000002655.1_ASM265v1_type_annotation.gff")
     """
-    output_gff = f"{gff_path[:-4]}_{type_annotation}.gff"
+    output_gff = f"{input_gff[:-4]}_{type_annotation}.gff"
     count = 0
     with open(input_gff, "r") as infile, open(output_gff, "w") as outfile:
         for line in infile:
@@ -168,7 +174,7 @@ def extract_mrna_annotations(input_gff: str, type_annotation: str):
     print(f"✅ Extracted {count} {type_annotation} entries to {output_gff}")
     return output_gff
 
-def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_dir: str, output_prefix: str):
+def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_path: str, species: str):
     """
     Align multiple genome assemblies (.fna) to a reference genome using minimap2 and samtools.
 
@@ -178,6 +184,8 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
         output_dir (str): Directory to store BAM and index files.
         output_prefix (str): Prefix for the output BAM file name.
     """
+    output_dir = f"{main_path}/alignment"
+    output_prefix = f"alignment_{species}"
 
     # Create output directory if needed
     os.makedirs(output_dir, exist_ok=True)
@@ -213,26 +221,26 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
 
     return output_bam
 
-
-if __name__ == "__main__":
+def prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species):
+    """"""
 
     # download assemblies
-    assembly_dir = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies"
-    assembly_list = os.path.join(assembly_dir, "genome_accessions.txt")
-    #download_genomes(assembly_list, assembly_dir)
+    assembly_dir, assembly_list = download_genomes(main_path)
 
     # download reference genome
-    # Example usage
-    reference_genome = "GCF_000002655.1"
     ref_assembly, ref_gff = download_reference_genome(reference_genome, assembly_dir)
 
     # filter the annotation with type_annotation
-    type_annotation = "mRNA"
-    gff_filtered = extract_mrna_annotations(ref_gff,type_annotation)
+    gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)
 
     # alignment
-    output_dir = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/alignment"
-    output_prefix = f"Asper_{reference_genome}"
+    bam_path = align_assemblies_to_reference(ref_assembly, assembly_dir, main_path, species)
 
-    bam_path = align_assemblies_to_reference(ref_assembly, assembly_dir, output_dir, output_prefix)
+    return assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path
 
+
+if __name__ == "__main__":
+    main_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus"
+    reference_genome = "GCF_000002655.1"
+    type_annotation = "mRNA"
+    species = "aspergillus_fumigatus"

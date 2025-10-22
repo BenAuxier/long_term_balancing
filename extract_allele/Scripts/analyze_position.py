@@ -424,7 +424,7 @@ def random_select_assembly(info_list, assembly_num):
     """
     Randomly sample n unaligned sequences at the interested mRNA position.
     This function is currently not used!
-    :param up_down_alignment: 改成对list适用的
+    :param up_down_alignment:
     :param n:
     :return: selected_assemblies, list of selected assemblies
     """
@@ -669,7 +669,7 @@ def count_aligned_reads(all_up_down_loci):
 
 
 def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_data, bam_path, assembly_path, up_num, down_num,
-                                   lower_limit):
+                                   lower_limit,minimal_alignment):
     """
     Analyze the position data for each of the candidate positions.
     :param candidate_data: the merged candidate data.
@@ -717,7 +717,7 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
 
             # Filter the complicated genomic region where not many reads completely aligned to
             all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
-            if all_aligned_reads_number < 15:
+            if all_aligned_reads_number < minimal_alignment:
                 continue
 
             # Check whether both alleles exist
@@ -740,7 +740,3 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
             candidate_data_summary.append(summary)
 
     return candidate_data_summary
-
-def analyze_data():
-    candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,
-                                                            bam_path, assembly_path, up_num, down_num, lower_limit)
