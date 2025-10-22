@@ -180,18 +180,21 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         annotation_info = annotation_sorted[seq_info_ref]
         annotation_end = annotation_info[-1]["end"]
         end = min(end_ref + extend, annotation_end)
+        genome_accession = f"reference_genome_{reference_genome}"
 
         # extract the sequence from the reference genome
         extract_allele_sequence(
             ref_assembly,
             region_name,
-            f"reference_genome_{reference_genome}",
+            genome_accession,
             seq_info_ref,
             start,
             end,
             "forward",
             output_path
         )
+
+        seq_name = f"{genome_accession}_{seq_info_ref}:{start}-{end}"
 
         # --- Read and filter GFF annotations ---
         # annotation_sorted {seq_ID: [row_dict, ...]}
@@ -210,26 +213,24 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         output_dir = os.path.join(output_path, region_name)
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir,
-                    f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
+                    f"{region_name}_{genome_accession}_{seq_info_ref}-{start}-{end}.gff3")
 
         # write in gff3 formate file
         with open(output_file, "w", encoding="utf-8", newline="") as out:
-            out.write("##gff-version 3\n")
+            out.write(f"##gff-version 3 {seq_name}\n")
 
             writer = csv.writer(out, delimiter="\t", lineterminator="\n")
 
             for ann in extract_annotation:
                 type_ = ann.get("type", ".")
 
-                if type_ not in ["gene", "mRNA", "CDS", "exon"]:
-                    continue
+                #if type_ not in ["gene", "mRNA", "CDS", "exon"]:
+                    #continue
 
                 if type_ == "mRNA":
                     type_ = "transcript"
 
-                seq = ann.get("seq_ID", ".")
-
-                seq_ID = f"reference_genome_{reference_genome}_{seq}:{start}-{end}"
+                seq_ID = seq_name
                 source = ann.get("source", ".")
                 start = str(ann.get("start", "."))
                 end = str(ann.get("end", "."))
@@ -317,7 +318,7 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_p
     find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_path, extend, assembly_num)
 
     # extract sequence and annotation from the reference genome
-    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
+    #extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
 
     # find and save final candidate genes and related information
     extract_all_candidates(candidate_data_summary, candidate_data, output_path)
@@ -326,6 +327,6 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_p
     annotate_file_path(output_path, augustus_species)
 
     # extract sequence and annotation from the reference genome
-    #extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
+    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
 
     return True
