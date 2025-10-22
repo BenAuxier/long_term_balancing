@@ -4,9 +4,9 @@ import os
 import glob
 from Bio import SeqIO
 from load_reference import read_gff
-
-
 from analyze_position import random_select_assembly
+from augustus_annotation import annotate_file_path
+
 
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
@@ -206,7 +206,9 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
                 extract_annotation.append(annotation)
 
         # create output path for gff3 file
+        #output_dir = os.path.join(output_path, region_name, "reference_annotation")
         output_dir = os.path.join(output_path, region_name)
+        os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir,
                     f"{region_name}_reference_genome_{reference_genome}_{seq_info_ref}-{start}-{end}.gff3")
 
@@ -217,14 +219,23 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
             writer = csv.writer(out, delimiter="\t", lineterminator="\n")
 
             for ann in extract_annotation:
-                seq_ID = ann.get("seq_ID", ".")
-                source = ann.get("source", ".")
                 type_ = ann.get("type", ".")
+
+                if type_ not in ["gene", "mRNA", "CDS", "exon"]:
+                    continue
+
+                if type_ == "mRNA":
+                    type_ = "transcript"
+
+                seq = ann.get("seq_ID", ".")
+
+                seq_ID = f"reference_genome_{reference_genome}_{seq}:{start}-{end}"
+                source = ann.get("source", ".")
                 start = str(ann.get("start", "."))
                 end = str(ann.get("end", "."))
                 score = ann.get("score", ".")
                 strand = ann.get("strand", ".")
-                phase = ann.get("phase", ".")  # do not have phase，fill in "."
+                phase = ann.get("phase", ".")
                 attributes = ann.get("attributes", ".")
 
                 # write in file
@@ -295,23 +306,26 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return True
 
-def annotate_sequences(output_path):
-
-
-
-
 def extract_all_candidates(candidate_data_summary, candidate_data, output_path):
     # extract sequences
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data)
     save_final_candidates(final_candidates, output_path)
     return True
 
-def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data):
-    # reference genome
-    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
-    # other genome
+def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
+    # extract sequence and annotation from other genomes
     find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_path, extend, assembly_num)
+
+    # extract sequence and annotation from the reference genome
+    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
 
     # find and save final candidate genes and related information
     extract_all_candidates(candidate_data_summary, candidate_data, output_path)
+
+    # make annotation
+    annotate_file_path(output_path, augustus_species)
+
+    # extract sequence and annotation from the reference genome
+    #extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
+
     return True

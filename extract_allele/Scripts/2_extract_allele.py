@@ -7,8 +7,7 @@ from mix_region import process_data
 from load_reference import load_annotation
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
-from augustus_annotation import annotate_file_path
-
+from visualization_clinker import run_clinker_batch
 
 
 # file paths, including all input files
@@ -38,6 +37,7 @@ lower_limit = 10
 upper_limit = 40
 extend = 5000
 reference_genome = "GCF_000002655.1"
+augustus_species = "aspergillus_fumigatus"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_path,"mRNA")
@@ -49,15 +49,16 @@ candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation
 
 
 # test the main code
-candidate_data_test = dict(list(candidate_merge.items())[0:5])
+candidate_data_test = dict(list(candidate_merge.items())[0:])
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,
                                                         bam_path, assembly_path, up_num, down_num, lower_limit)
 
-
 # extract sequences
 outputs = extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,
-                          assembly_dir,assembly_num,candidate_data)
+                          assembly_dir,assembly_num,candidate_data,augustus_species)
 
+#run clinker
+run_clinker_batch(output_path)
 
 print("finished")

@@ -40,6 +40,7 @@ def read_gff(gff_path, keep_type=None):
                 "end": int(row["end"]),
                 "score": row["score"],
                 "strand": row["strand"],
+                "phase": row["phase"],
                 "id": attr_dict.get("ID"),
                 "locus_tag": attr_dict.get("locus_tag"),
                 "transcript_id": attr_dict.get("transcript_id"),
