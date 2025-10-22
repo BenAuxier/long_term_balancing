@@ -7,6 +7,7 @@ from mix_region import process_data
 from load_reference import load_annotation
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
+from augustus_annotation import annotate_file_path
 
 
 
@@ -57,5 +58,6 @@ candidate_data_summary = analyze_all_candidate_position(candidate_data_test, ann
 # extract sequences
 outputs = extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,
                           assembly_dir,assembly_num,candidate_data)
+
 
 print("finished")
