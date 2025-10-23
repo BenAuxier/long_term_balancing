@@ -293,5 +293,6 @@ if __name__ == "__main__":
     type_annotation = "mRNA"
     species = "aspergillus_fumigatus"
 
-    ref_gff = ""
+    ref_gff = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
+    type_annotation = "gene"
     gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)
