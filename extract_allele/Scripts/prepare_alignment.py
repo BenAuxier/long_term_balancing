@@ -3,6 +3,8 @@ import subprocess
 import zipfile
 import shutil
 import glob
+import sys
+
 
 def download_genomes(main_path: str):
     """
@@ -16,7 +18,7 @@ def download_genomes(main_path: str):
     assembly_dir = f"{main_path}/genome_assemblies"
 
     # need to be created manually!!
-    assembly_list = f"{assembly_dir}/genome_accessions.txt"
+    assembly_list = f"{main_path}/genome_accessions.txt"
 
     # Create output directory if it does not exist
     os.makedirs(assembly_dir, exist_ok=True)
@@ -72,6 +74,49 @@ def download_genomes(main_path: str):
 
     print("\n🎉 All downloads completed successfully.")
     return assembly_dir, assembly_list
+
+def process_fna_file(filepath):
+    """
+    Process a single .fna file:
+    1. Extract prefix from filename by removing the suffix 'genomic.fna'
+    2. Replace each FASTA header (lines starting with '>') with '>prefix_originalHeader'
+    3. Save the modified content back to the same file
+    """
+    filename = os.path.basename(filepath)
+    if filename.endswith("genomic.fna"):
+        prefix = filename[:-len("genomic.fna")]
+    else:
+        prefix = os.path.splitext(filename)[0]  # fallback: remove extension
+
+    # Read original file
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    # Modify headers
+    new_lines = []
+    for line in lines:
+        if line.startswith(">"):
+            # Insert prefix after ">"
+            line = ">" + prefix + line[1:]
+        new_lines.append(line)
+
+    # Write back to the same file
+    with open(filepath, "w") as f:
+        f.writelines(new_lines)
+
+    print(f"Processed: {filename} with prefix '{prefix}'")
+
+
+def modify_name_path(ref_assembly):
+    # Find all .fna files in the directory
+    fna_files = glob.glob(os.path.join(ref_assembly, "*.fna"))
+
+    if not fna_files:
+        print(f"No .fna files found in {ref_assembly}")
+        return
+
+    for fna_file in fna_files:
+        process_fna_file(fna_file)
 
 def download_reference_genome(reference_genome: str, assembly_dir: str):
     """
@@ -230,6 +275,9 @@ def prepare_anallyze_alignment(main_path, reference_genome, type_annotation, spe
     # download reference genome
     ref_assembly, ref_gff = download_reference_genome(reference_genome, assembly_dir)
 
+    # modify the chromosome name of the assemblies
+    modify_name_path(assembly_dir)
+
     # filter the annotation with type_annotation
     gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)
 
@@ -244,3 +292,6 @@ if __name__ == "__main__":
     reference_genome = "GCF_000002655.1"
     type_annotation = "mRNA"
     species = "aspergillus_fumigatus"
+
+    ref_gff = ""
+    gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)

@@ -12,9 +12,9 @@ from make_outputs import extract_outputs
 from visualization_clinker import run_clinker_batch
 
 # information
-reference_genome = "GCF_000002655.1"
-species = "aspergillus_fumigatus"
-type_annotation = "mRNA" # type of annotation used in depth calculation
+reference_genome = "GCA_000184455.3"
+species = "aspergillus_oryzae"
+type_annotation = "gene" # type of annotation used in depth calculation
 
 ##########################################################################
 # file paths, including all input files
@@ -40,14 +40,18 @@ bam_path # Path to bam file
 
 """
 
-assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species)
+#assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species)
 
-assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies"
-assembly_list= f"/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_accessions.txt"
-ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.fna"
-ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.gff"
-gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff"
-bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/alignment/alignment_aspergillus_fumigatus.sorted.bam"
+assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
+assembly_list= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_accessions.txt"
+ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000002655.1_genomic.fna"
+ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000002655.1_genomic.gff"
+gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff"
+bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/alignment_aspergillus_oryzae.sorted.bam"
+
+
+
+
 ##########################################################################################
 
 # calculate number of assemblt used
@@ -76,7 +80,6 @@ annotation_sorted, annotation_sorted_dict = load_annotation(ref_gff,type_annotat
 # Input and output file paths
 candidate_data = process_data(depth_path)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
-
 
 # test the main code
 candidate_data_test = dict(list(candidate_merge.items())[0:])

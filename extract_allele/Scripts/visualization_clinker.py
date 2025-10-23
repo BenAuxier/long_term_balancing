@@ -60,4 +60,6 @@ def run_clinker_batch(parent_dir: str):
 
 if __name__ == "__main__":
     # Example usage
-    run_clinker_batch("/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test4_extract_seq/extract_allele/XM_743601.1-XM_743603.1")
+    output_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results"
+    sequence_path = f"{output_path}/extract_sequences"
+    run_clinker_batch(sequence_path)

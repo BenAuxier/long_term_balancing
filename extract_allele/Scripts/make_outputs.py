@@ -308,25 +308,26 @@ def save_final_candidates(final_candidates, output_path):
     return True
 
 def extract_all_candidates(candidate_data_summary, candidate_data, output_path):
+
     # extract sequences
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data)
     save_final_candidates(final_candidates, output_path)
     return True
 
 def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
-    # extract sequence and annotation from other genomes
-    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_path, extend, assembly_num)
 
-    # extract sequence and annotation from the reference genome
-    #extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
-
+    candidates_path = f"{output_path}/candidate_gene_info"
     # find and save final candidate genes and related information
-    extract_all_candidates(candidate_data_summary, candidate_data, output_path)
+    extract_all_candidates(candidate_data_summary, candidate_data, candidates_path)
+
+    sequence_path = f"{output_path}/extract_sequences"
+    # extract sequence and annotation from other genomes
+    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
     # make annotation
-    annotate_file_path(output_path, augustus_species)
+    annotate_file_path(sequence_path, augustus_species)
 
     # extract sequence and annotation from the reference genome
-    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly)
+    extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
     return True
