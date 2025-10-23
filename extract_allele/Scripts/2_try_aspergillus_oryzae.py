@@ -40,7 +40,7 @@ bam_path # Path to bam file
 
 """
 
-#assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species)
+assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species)
 
 assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
 assembly_list= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_accessions.txt"
