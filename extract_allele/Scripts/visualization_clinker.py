@@ -1,26 +1,26 @@
 import os
 import subprocess
 
-def run_clinker_batch(parent_dir: str):
+def run_clinker_batch(sequence_path, main_path):
     """
     Batch run Clinker on all subdirectories containing multiple valid GFF3 files.
 
     Args:
-        parent_dir (str): Path to the parent directory containing multiple subdirectories with .gff3 files.
+        sequence_path (str): Path to the parent directory containing multiple subdirectories with .gff3 files.
 
     The function performs the following steps:
-        1. Traverse all first-level subdirectories under parent_dir.
+        1. Traverse all first-level subdirectories under sequence_path.
         2. For each subdirectory:
            - Identify valid GFF3 files (non-empty and with content beyond headers).
            - If >=2 valid files exist, run Clinker and save the HTML plot to the output folder.
     """
-    parent_dir = os.path.abspath(parent_dir)
-    output_dir = os.path.join(parent_dir, "clinker_results")
+
+    output_dir = os.path.join(main_path, "clinker_results")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Traverse each subdirectory under parent_dir
-    for gff_dir in os.listdir(parent_dir):
-        gff_dir_path = os.path.join(parent_dir, gff_dir)
+    # Traverse each subdirectory under sequence_path
+    for gff_dir in os.listdir(sequence_path):
+        gff_dir_path = os.path.join(sequence_path, gff_dir)
         if not os.path.isdir(gff_dir_path):
             continue
 
@@ -57,6 +57,8 @@ def run_clinker_batch(parent_dir: str):
             print(f"✅ Clinker analysis finished for {gff_dir_path}. Results saved to {output_html}")
         except subprocess.CalledProcessError as e:
             print(f"⚠️ Error running Clinker on {gff_dir_path}: {e}")
+
+        return output_dir
 
 if __name__ == "__main__":
     # Example usage

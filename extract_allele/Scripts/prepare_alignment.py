@@ -6,7 +6,7 @@ import glob
 import sys
 
 
-def download_genomes(main_path: str):
+def download_genomes(main_path,assembly_list):
     """
     Download genome assemblies from NCBI using accession numbers listed in a text file.
 
@@ -16,9 +16,6 @@ def download_genomes(main_path: str):
     """
 
     assembly_dir = f"{main_path}/genome_assemblies"
-
-    # need to be created manually!!
-    assembly_list = f"{main_path}/genome_accessions.txt"
 
     # Create output directory if it does not exist
     os.makedirs(assembly_dir, exist_ok=True)
@@ -266,11 +263,14 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_pa
 
     return output_bam
 
-def prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species):
+def prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list):
     """"""
 
+    # path to specific species
+    main_path = f"{base_path}/{species}"
+
     # download assemblies
-    assembly_dir, assembly_list = download_genomes(main_path)
+    assembly_dir, assembly_list = download_genomes(main_path,assembly_list)
 
     # download reference genome
     ref_assembly, ref_gff = download_reference_genome(reference_genome, assembly_dir)
@@ -284,7 +284,7 @@ def prepare_anallyze_alignment(main_path, reference_genome, type_annotation, spe
     # alignment
     bam_path = align_assemblies_to_reference(ref_assembly, assembly_dir, main_path, species)
 
-    return assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path
+    return assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path
 
 
 if __name__ == "__main__":

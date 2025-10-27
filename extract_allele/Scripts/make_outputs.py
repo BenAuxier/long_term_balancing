@@ -212,8 +212,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         #output_dir = os.path.join(output_path, region_name, "reference_annotation")
         output_dir = os.path.join(output_path, region_name)
         os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir,
-                    f"{region_name}_{genome_accession}_{seq_info_ref}-{start}-{end}.gff3")
+        output_file = f"{output_dir}/{region_name}_{genome_accession}_{seq_info_ref}-{start}-{end}.gff3"
 
         # write in gff3 formate file
         with open(output_file, "w", encoding="utf-8", newline="") as out:
@@ -314,13 +313,13 @@ def extract_all_candidates(candidate_data_summary, candidate_data, output_path):
     save_final_candidates(final_candidates, output_path)
     return True
 
-def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
+def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
 
-    candidates_path = f"{output_path}/candidate_gene_info"
+    candidates_path = f"{main_path}/candidate_gene_info"
     # find and save final candidate genes and related information
     extract_all_candidates(candidate_data_summary, candidate_data, candidates_path)
 
-    sequence_path = f"{output_path}/extract_sequences"
+    sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
     find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
@@ -330,4 +329,4 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, output_p
     # extract sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
-    return True
+    return candidates_path,sequence_path

@@ -55,7 +55,7 @@ def process_data(input_file):
                             'locus_tag', 'product', 'transcript_id']
             row_new = {}
             for key in keys_to_keep:
-                row_new[key] = row[key]
+                row_new[key] = row.get(key, ".")
 
             candidate_data.append(row_new)
     return candidate_data

@@ -15,6 +15,7 @@ from visualization_clinker import run_clinker_batch
 reference_genome = "GCA_000184455.3"
 species = "aspergillus_oryzae"
 type_annotation = "gene" # type of annotation used in depth calculation
+annotation_name = "locus_tag"
 
 ##########################################################################
 # file paths, including all input files
@@ -23,8 +24,12 @@ base_path = "/lustre/BIF/nobackup/leng010/test"
 # path to specific species
 main_path = f"{base_path}/{species}"
 
-# output base path of the fasta files
-output_path = f"{main_path}/results"
+#assembly_list, this file need to create manually
+assembly_list = f"{base_path}/genome_accessions/{species}.txt"
+#test
+assembly_list = "/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_oryzae_test.txt"
+
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
 
 #########################################################################
 """
@@ -37,13 +42,9 @@ assembly_list = f"{main_path}/genome_accessions.txt
 ref_assembly # Reference genome assembly
 ref_gff # Reference genome annotation
 bam_path # Path to bam file
-
 """
-
-assembly_dir, assembly_list, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(main_path, reference_genome, type_annotation, species)
-
 assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
-assembly_list= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_accessions.txt"
+assembly_list= f"/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_oryzae.txt"
 ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.fna"
 ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
 gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic_gene.gff"
@@ -51,7 +52,7 @@ bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/align
 
 ##########################################################################################
 
-# calculate number of assemblt used
+# calculate number of assembly used
 with open(assembly_list, "r") as f:
     genome_num = sum(1 for line in f if line.strip())
 
@@ -71,12 +72,17 @@ depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meande
 run_bedtools_coverage(gff_filtered, bam_path, depth_path)
 
 # load annotation data from gff annotation
-annotation_sorted, annotation_sorted_dict = load_annotation(ref_gff,type_annotation)
+annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_annotation, annotation_name)
+
+for key,value in annotation_sorted_dict.items():
+    print(key,value)
+print("annotation loaded")
 
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
+
 
 # test the main code
 candidate_data_test = dict(list(candidate_merge.items())[0:])
@@ -85,11 +91,10 @@ candidate_data_summary = analyze_all_candidate_position(candidate_data_test, ann
                         bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment)
 
 # extract sequences
-outputs = extract_outputs(candidate_data_summary, reference_genome, ref_gff, output_path, extend, ref_assembly,
+candidates_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
                           assembly_dir,assembly_num,candidate_data,species)
 
 #run clinker
-sequence_path = f"{output_path}/extract_sequences"
-run_clinker_batch(sequence_path)
+clinker_output_dir = run_clinker_batch(sequence_path, main_path)
 
 print("finished")

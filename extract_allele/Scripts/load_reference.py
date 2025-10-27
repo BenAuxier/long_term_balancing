@@ -32,7 +32,23 @@ def read_gff(gff_path, keep_type=None):
                 if "=" in attr:
                     key, value = attr.strip().split("=", 1)
                     attr_dict[key] = value
+
             row_data = {
+                "seq_ID": row["seq_ID"],
+                "source": row.get("source", "."),
+                "type": row.get("type", "."),
+                "start": int(row["start"]),
+                "end": int(row["end"]),
+                "score": row.get("score", "."),
+                "strand": row.get("strand", "."),
+                "phase": row.get("phase", "."),
+                "id": attr_dict.get("ID", "."),
+                "locus_tag": attr_dict.get("locus_tag", "."),
+                "transcript_id": attr_dict.get("transcript_id", "."),
+                "attributes": row.get("attributes", ".")
+            }
+
+            """row_data = {
                 "seq_ID": row["seq_ID"],
                 "source": row["source"],
                 "type": row["type"],
@@ -45,7 +61,7 @@ def read_gff(gff_path, keep_type=None):
                 "locus_tag": attr_dict.get("locus_tag"),
                 "transcript_id": attr_dict.get("transcript_id"),
                 "attributes": row["attributes"]
-            }
+            }"""
 
             gff_dict[row["seq_ID"]].append(row_data)
 
@@ -67,7 +83,7 @@ def annotation_rank(annotation_sorted):
     return annotation_sorted
 
 
-def read_gff_dict(annotation_sorted):
+def read_gff_dict(annotation_sorted, annotation_name):
     """
     Convert annotation storage format.
     :param annotation_sorted: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
@@ -77,13 +93,13 @@ def read_gff_dict(annotation_sorted):
     for seq, annotation_list in annotation_sorted.items():
         annotation_dict[seq] = {}
         for annotation in annotation_list:
-            annotation_id = annotation["transcript_id"]
+            annotation_id = annotation[annotation_name]
             annotation_dict[seq][annotation_id] = annotation
 
     return annotation_dict
 
 
-def load_annotation(gff_path, keep_type):
-    annotation_sorted = read_gff(gff_path, keep_type="mRNA")
-    annotation_sorted_dict = read_gff_dict(annotation_sorted)
+def load_annotation(gff_path, keep_type, annotation_name):
+    annotation_sorted = read_gff(gff_path, keep_type)
+    annotation_sorted_dict = read_gff_dict(annotation_sorted, annotation_name)
     return annotation_sorted, annotation_sorted_dict
