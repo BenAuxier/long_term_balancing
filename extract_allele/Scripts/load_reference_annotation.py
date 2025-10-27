@@ -44,24 +44,9 @@ def read_gff(gff_path, keep_type=None):
                 "phase": row.get("phase", "."),
                 "id": attr_dict.get("ID", "."),
                 "locus_tag": attr_dict.get("locus_tag", "."),
-                "transcript_id": attr_dict.get("transcript_id", "."),
+                #"transcript_id": attr_dict.get("transcript_id", "."),
                 "attributes": row.get("attributes", ".")
             }
-
-            """row_data = {
-                "seq_ID": row["seq_ID"],
-                "source": row["source"],
-                "type": row["type"],
-                "start": int(row["start"]),
-                "end": int(row["end"]),
-                "score": row["score"],
-                "strand": row["strand"],
-                "phase": row["phase"],
-                "id": attr_dict.get("ID"),
-                "locus_tag": attr_dict.get("locus_tag"),
-                "transcript_id": attr_dict.get("transcript_id"),
-                "attributes": row["attributes"]
-            }"""
 
             gff_dict[row["seq_ID"]].append(row_data)
 
@@ -87,7 +72,7 @@ def read_gff_dict(annotation_sorted, annotation_name):
     """
     Convert annotation storage format.
     :param annotation_sorted: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
-    :return: dict, {seq_ID: {transcript_id: annotation, ...}}
+    :return: dict, {seq_ID: {id: annotation, ...}}
     """
     annotation_dict = {}
     for seq, annotation_list in annotation_sorted.items():

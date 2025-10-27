@@ -52,7 +52,7 @@ def process_data(input_file):
 
             # select column
             keys_to_keep = ['seq_ID', 'type', 'start', 'end', 'strand', 'depth', 'Parent', 'Name',
-                            'locus_tag', 'product', 'transcript_id']
+                            'locus_tag', 'product']
             row_new = {}
             for key in keys_to_keep:
                 row_new[key] = row.get(key, ".")
@@ -68,7 +68,7 @@ def select_depth(candidate_data, lower_limit, upper_limit):
     :param lower_limit:
     :param upper_limit:
     :return: filtered_candidate_data, same as candidate_data, a list including
-    dictionaries for each mRNA position
+    dictionaries for each locus position
     """
 
     filtered_candidate_data = []
@@ -145,7 +145,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
     xxxx: ......
     }
     :param annotation_dict: dict, genome annotation
-    {seq_ID: {transcript_id: annotation, ...}}
+    {seq_ID: {id: annotation, ...}}
     :return: candidate_merge, dict
     {
     NC_007197.1:
@@ -235,8 +235,11 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
 def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict):
     candidate_data = process_data(depth_path)
+    print(candidate_data)
     filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
+    print("filtered_candidate_data", filtered_candidate_data)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
+    print("candidate_data_seq",candidate_data_seq)
     candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
     return candidate_merge
 

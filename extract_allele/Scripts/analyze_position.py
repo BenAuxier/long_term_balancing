@@ -215,61 +215,11 @@ def extract_candidate_position(filtered_candidate_data):
 
 ####################################
 # data analysis
-# Select up and downstream positions
-def read_gtf(gtf_path, keep_type=None):
-    """
-    Read a GTF/GFF file and organize it by seq_ID.
-
-    :param gtf_path: path to the GTF/GFF file
-    :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
-    :return: dict, {seq_ID: [row_dict, ...]} sorted by start
-    """
-    gtf_dict = defaultdict(list)
-
-    with open(gtf_path, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
-        ])
-
-        for row in reader:
-            if row["seq_ID"].startswith("#"):
-                continue  # skip header/comment lines
-            if keep_type and row["type"] != keep_type:
-                continue
-
-            # parse attributes
-            attr_dict = {}
-            for attr in row["attributes"].split(";"):
-                if attr.strip() == "":
-                    continue
-                key_value = attr.strip().split(" ", 1)
-                if len(key_value) == 2:
-                    key, value = key_value
-                    attr_dict[key] = value.strip('"')
-
-            row_data = {
-                "seq_ID": row["seq_ID"],
-                "type": row["type"],
-                "start": int(row["start"]),
-                "end": int(row["end"]),
-                "gene_id": attr_dict.get("gene_id"),
-                "transcript_id": attr_dict.get("transcript_id")
-            }
-
-            gtf_dict[row["seq_ID"]].append(row_data)
-
-    # sort each row with the order of start position
-    for seq in gtf_dict:
-        gtf_dict[seq].sort(key=lambda x: x["start"])
-
-    return dict(gtf_dict)
-
-
-def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num):
+def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num, type_annotation):
     """
     Retrieve the positional information of the m upstream and n downstream mRNAs for a specified mRNA.
-    :param transcript_id: NCBI id, such as "XM_742446.1"
-    :param sequence_id: sequence of the transcript, NCBI id, such as "NC_007194.1"
+    :param id: NCBI id, such as "XM_742446.1"
+    :param sequence_id: sequence of the NCBI id, such as "NC_007194.1"
     :param annotation_sorted: the sorted annotation dictionary.
     :param n: number of positions to identify at the up and down-stream positions.
     :return: up_down_locations: a dictionary with the location of input mRNA, its up and down-stream mRNA positions.
@@ -328,7 +278,7 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
 
         up_down_locations_seq = {
             "position": position_info,
-            'type': 'mRNA',
+            'type': type_annotation,
             "upstream_position": upstream_position,
             "downstream_position": downstream_position
         }
@@ -339,14 +289,13 @@ def find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_n
             f"Warning! sequence {sequence_id},start {start}, end {end} is not found in {sequence_id} of reference genome.")
 
 
-def find_position_depth(transcript_id, candidate_data_dict):
-    # print(transcript_id)
-    pos_info = candidate_data_dict[transcript_id]
+def find_position_depth(id, candidate_data_dict):
+    pos_info = candidate_data_dict[id]
     pos_depth = float(pos_info["depth"])
     return pos_depth
 
 
-def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff=10):
+def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff, annotation_name):
     """
 
     :param up_down_locations:
@@ -361,13 +310,14 @@ def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cu
     downstream_position = up_down_locations["downstream_position"]
     sum_depth_up = 0
     sum_depth_down = 0
+
     for pos1 in upstream_position:
         # print(pos1)
-        transcript_id1 = pos1["transcript_id"]
-        sum_depth_up += find_position_depth(transcript_id1, candidate_data_dict)
+        id1 = pos1[annotation_name]
+        sum_depth_up += find_position_depth(id1, candidate_data_dict)
     for pos2 in downstream_position:
-        transcript_id2 = pos2["transcript_id"]
-        sum_depth_down += find_position_depth(transcript_id2, candidate_data_dict)
+        id2 = pos2[annotation_name]
+        sum_depth_down += find_position_depth(id2, candidate_data_dict)
     ave_depth_up = sum_depth_up / up_num
     ave_depth_down = sum_depth_down / down_num
     if ave_depth_up >= cutoff or ave_depth_down >= cutoff:
@@ -669,7 +619,7 @@ def count_aligned_reads(all_up_down_loci):
 
 
 def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_data, bam_path, assembly_path, up_num, down_num,
-                                   lower_limit,minimal_alignment):
+                                   lower_limit,minimal_alignment,annotation_name, type_annotation):
     """
     Analyze the position data for each of the candidate positions.
     :param candidate_data: the merged candidate data.
@@ -693,14 +643,14 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
             start = candidate["start"]
             end = candidate["end"]
             # finding the up and downstream positions
-            up_down_locations = find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num)
+            up_down_locations = find_position_seq(sequence_id, start, end, annotation_sorted, up_num, down_num, type_annotation)
 
             if up_down_locations == None:
                 continue
 
             # check the mean depth of the positions
 
-            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit)
+            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit,annotation_name)
             if depth_status == False:
                 continue
 

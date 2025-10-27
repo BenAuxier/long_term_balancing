@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import glob
 from Bio import SeqIO
-from load_reference import read_gff
+from load_reference_annotation import read_gff
 from analyze_position import random_select_assembly
 from augustus_annotation import annotate_file_path
 
@@ -140,12 +140,14 @@ def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
+        print("ref_allele_info",ref_allele_info)
+
         ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
                                          assembly_num)
         diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele", assembly_dir, output_path,
                                           extend, assembly_num)
 
-    return True
+    return output_path
 
 
 def extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend,
@@ -222,9 +224,6 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
 
             for ann in extract_annotation:
                 type_ = ann.get("type", ".")
-
-                #if type_ not in ["gene", "mRNA", "CDS", "exon"]:
-                    #continue
 
                 if type_ == "mRNA":
                     type_ = "transcript"
@@ -321,8 +320,8 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
 
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
-    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
-
+    sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
+    print(sequence_path)
     # make annotation
     annotate_file_path(sequence_path, augustus_species)
 

@@ -6,7 +6,7 @@ from prepare_alignment import prepare_anallyze_alignment
 from calculate_depth import run_bedtools_coverage
 from mix_region import process_results
 from mix_region import process_data
-from load_reference import load_annotation
+from load_reference_annotation import load_annotation
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
 from visualization_clinker import run_clinker_batch
