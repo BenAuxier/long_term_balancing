@@ -58,7 +58,7 @@ def run_clinker_batch(sequence_path, main_path):
         except subprocess.CalledProcessError as e:
             print(f"⚠️ Error running Clinker on {gff_dir_path}: {e}")
 
-        return output_dir
+    return output_dir
 
 if __name__ == "__main__":
     # Example usage

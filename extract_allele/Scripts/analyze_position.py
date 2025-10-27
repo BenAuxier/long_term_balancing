@@ -2,7 +2,7 @@ import csv
 import pysam
 from collections import defaultdict
 import random
-from mix_region import dict_candidate_data_transfer
+from merge_region import dict_candidate_data_transfer
 
 
 # Generate covered and uncovered genomes at one position.

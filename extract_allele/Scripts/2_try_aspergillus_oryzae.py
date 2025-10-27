@@ -4,8 +4,8 @@ Extract the allele of each gene in multiple genomes
 """
 from prepare_alignment import prepare_anallyze_alignment
 from calculate_depth import run_bedtools_coverage
-from mix_region import process_results
-from mix_region import process_data
+from merge_region import process_results
+from merge_region import process_data
 from load_reference_annotation import load_annotation
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
@@ -27,7 +27,7 @@ main_path = f"{base_path}/{species}"
 #assembly_list, this file need to create manually
 assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 #test
-assembly_list = "/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_oryzae_test.txt"
+assembly_list = f"/lustre/BIF/nobackup/leng010/test/genome_accessions/{species}_test.txt"
 
 #assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
 
@@ -51,8 +51,7 @@ gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assem
 bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/alignment_aspergillus_oryzae.sorted.bam"
 
 ##########################################################################################
-
-# calculate number of assembly used
+# calculate number of assemblt used
 with open(assembly_list, "r") as f:
     genome_num = sum(1 for line in f if line.strip())
 
@@ -69,26 +68,23 @@ extend = 5000
 # path to store the depth file
 depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
 # analyze the depth of the genomic regions of
-run_bedtools_coverage(gff_filtered, bam_path, depth_path)
+#run_bedtools_coverage(gff_filtered, bam_path, depth_path)
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_annotation, annotation_name)
 
-for key,value in annotation_sorted_dict.items():
-    print(key,value)
-print("annotation loaded")
-
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path)
+print(candidate_data)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
-
 
 # test the main code
 candidate_data_test = dict(list(candidate_merge.items())[0:])
+
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,
-                        bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment)
+                        bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,annotation_name, type_annotation)
 
 # extract sequences
 candidates_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
@@ -98,3 +94,4 @@ candidates_path,sequence_path = extract_outputs(candidate_data_summary, referenc
 clinker_output_dir = run_clinker_batch(sequence_path, main_path)
 
 print("finished")
+
