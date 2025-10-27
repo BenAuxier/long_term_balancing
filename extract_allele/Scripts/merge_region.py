@@ -232,6 +232,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict):
     candidate_data = process_data(depth_path)
     filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
+    print(lower_limit, upper_limit)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
     candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
     return candidate_merge
