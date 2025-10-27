@@ -10,6 +10,7 @@ from load_reference_annotation import load_annotation
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
 from visualization_clinker import run_clinker_batch
+import os
 
 # information
 reference_genome = "GCA_000184455.3"
@@ -23,13 +24,13 @@ annotation_name = "locus_tag"
 base_path = "/lustre/BIF/nobackup/leng010/test"
 # path to specific species
 main_path = f"{base_path}/{species}"
+os.makedirs(main_path, exist_ok=True)
+
 
 #assembly_list, this file need to create manually
 assembly_list = f"{base_path}/genome_accessions/{species}.txt"
-#test
-assembly_list = f"/lustre/BIF/nobackup/leng010/test/genome_accessions/{species}_test.txt"
 
-#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
+assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
 
 #########################################################################
 """
@@ -42,14 +43,14 @@ assembly_list = f"{main_path}/genome_accessions.txt
 ref_assembly # Reference genome assembly
 ref_gff # Reference genome annotation
 bam_path # Path to bam file
-"""
+
 assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
 assembly_list= f"/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_oryzae_test.txt"
 ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.fna"
 ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
 gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic_gene.gff"
 bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/alignment_aspergillus_oryzae.sorted.bam"
-
+"""
 ##########################################################################################
 # calculate number of assemblt used
 with open(assembly_list, "r") as f:
