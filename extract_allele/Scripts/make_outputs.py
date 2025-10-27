@@ -263,7 +263,6 @@ def find_final_candidates(candidate_data_summary, candidate_data):
                     candidate_info = {
                         "region_name": region_name,
                         "gene_id": row["locus_tag"],
-                        "transcript_id": row["transcript_id"],
                         "gene_info": row
                     }
                     final_candidates.append(candidate_info)
@@ -321,7 +320,7 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
     sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
-    print(sequence_path)
+
     # make annotation
     annotate_file_path(sequence_path, augustus_species)
 

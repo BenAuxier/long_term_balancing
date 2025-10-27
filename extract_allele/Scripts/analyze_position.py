@@ -206,10 +206,9 @@ def extract_candidate_position(filtered_candidate_data):
             "start": row["start"],
             "end": row["end"],
             "depth": row["depth"],
-            "id": row["Name"],
             "locus_tag": row["locus_tag"]
         }
-        candidate_data[row["Name"]] = row_data
+        candidate_data[row["locus_tag"]] = row_data
     return candidate_data
 
 

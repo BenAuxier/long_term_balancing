@@ -11,7 +11,6 @@ def process_data(input_file):
      'strand': '+',
      'depth': '50.0000000',
      'Parent': 'gene-AFUA_1G00100',
-     'Name': 'XM_001481640.1',
      'locus_tag': 'AFUA_1G00100',
      'product': 'putative MFS monocarboxylate transporter',
      'transcript_id': 'XM_001481640.1'}, ...]
@@ -51,8 +50,7 @@ def process_data(input_file):
                 all_keys.add(key)
 
             # select column
-            keys_to_keep = ['seq_ID', 'type', 'start', 'end', 'strand', 'depth', 'Parent', 'Name',
-                            'locus_tag', 'product']
+            keys_to_keep = ['seq_ID', 'type', 'start', 'end', 'strand', 'depth','locus_tag', 'product']
             row_new = {}
             for key in keys_to_keep:
                 row_new[key] = row.get(key, ".")
@@ -76,7 +74,6 @@ def select_depth(candidate_data, lower_limit, upper_limit):
         depth = row["depth"]
         depth = float(depth)
         if lower_limit < depth < upper_limit:
-            # print(row)
             filtered_candidate_data.append(row)
 
     return filtered_candidate_data
@@ -90,8 +87,8 @@ def dict_candidate_data_transfer(candidate_data):
     """
     candidate_data_dict = {}
     for row in candidate_data:
-        name = row["Name"]
-        candidate_data_dict[name] = row
+        locus_tag = row["locus_tag"]
+        candidate_data_dict[locus_tag] = row
     return candidate_data_dict
 
 
@@ -123,7 +120,6 @@ def extract_candidate_position_list(filtered_candidate_data):
             "start": row["start"],
             "end": row["end"],
             "depth": row["depth"],
-            "id": row["Name"],
             "locus_tag": row["locus_tag"]
         }
         candidate_data_seq[row["seq_ID"]].append(row_data)
@@ -172,7 +168,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
         for i in range(0, len(candidates)):
             candidate_i = candidates[i]
-            gene_id_i = candidate_i["id"]
+            gene_id_i = candidate_i["locus_tag"]
             annotation_candidate_i = annotation_seq[gene_id_i]
 
             if mixed_data == {}:  # if nothing in mixed data, select the current annotation
@@ -206,7 +202,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
             elif i <= len(candidates) - 2:
                 # candidate i + 1
                 candidate_i_1 = candidates[i + 1]
-                id_i_1 = candidate_i_1["id"]
+                id_i_1 = candidate_i_1["locus_tag"]
                 annotation_candidate_i_1 = annotation_seq[id_i_1]
                 rank_i_1 = annotation_candidate_i_1["rank"]
 
@@ -235,11 +231,8 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
 def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict):
     candidate_data = process_data(depth_path)
-    print(candidate_data)
     filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
-    print("filtered_candidate_data", filtered_candidate_data)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
-    print("candidate_data_seq",candidate_data_seq)
     candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
     return candidate_merge
 

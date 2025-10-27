@@ -47,7 +47,6 @@ bam_path # Path to bam file
 """
 
 assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies"
-assembly_list= "/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_fumigatus.txt"
 ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.fna"
 ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.gff"
 gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic_gene.gff"
@@ -71,7 +70,7 @@ extend = 5000
 # path to store the depth file
 depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
 # analyze the depth of the genomic regions of
-run_bedtools_coverage(gff_filtered, bam_path, depth_path)
+#run_bedtools_coverage(gff_filtered, bam_path, depth_path)
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_annotation, annotation_name)
@@ -80,7 +79,6 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_a
 # Input and output file paths
 candidate_data = process_data(depth_path)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
-print(candidate_merge)
 
 # test the main code
 candidate_data_test = dict(list(candidate_merge.items())[0:])
@@ -88,12 +86,13 @@ candidate_data_test = dict(list(candidate_merge.items())[0:])
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,
                         bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,annotation_name, type_annotation)
-print(candidate_data_summary)
+
 # extract sequences
 candidates_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
                           assembly_dir,assembly_num,candidate_data,species)
 
+print(sequence_path)
 #run clinker
-#clinker_output_dir = run_clinker_batch(sequence_path, main_path)
+clinker_output_dir = run_clinker_batch(sequence_path, main_path)
 
 print("finished")
