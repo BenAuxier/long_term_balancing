@@ -562,7 +562,8 @@ def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignmen
                 interval_diff_pct = abs(ref_interval - read_interval) * 100 / ref_interval
                 loci_selected["interval difference(%)"] = interval_diff_pct
 
-        up_down_loci[genome_id] = loci_selected
+                up_down_loci[genome_id] = loci_selected
+
         # print(loci_selected)
 
     return up_down_loci
@@ -648,7 +649,6 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
                 continue
 
             # check the mean depth of the positions
-
             depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit,annotation_name)
             if depth_status == False:
                 continue
