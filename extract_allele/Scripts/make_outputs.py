@@ -140,8 +140,6 @@ def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
         diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
 
-        print("ref_allele_info",ref_allele_info)
-
         ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
                                          assembly_num)
         diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele", assembly_dir, output_path,
@@ -167,9 +165,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
     for summary in candidate_data_summary:
         region_name = summary["region_name"]
         up_down_locations = summary["position_info"]
-        print(up_down_locations)
 
-        """"""
         seq_info_ref = up_down_locations["position"]["seq_ID"]
         start_ref = up_down_locations["upstream_position"][0]["start"]
         end_ref = up_down_locations["downstream_position"][-1]["end"]

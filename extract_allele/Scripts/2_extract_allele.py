@@ -29,7 +29,7 @@ main_path = f"{base_path}/{species}"
 
 #assembly_list, this file need to create manually
 assembly_list = f"{base_path}/genome_accessions/{species}.txt"
-assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
+#assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
 #########################################################################
 assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
 
@@ -70,7 +70,7 @@ extend = 5000
 # path to store the depth file
 depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
 # analyze the depth of the genomic regions of
-#run_bedtools_coverage(gff_filtered, bam_path, depth_path)
+run_bedtools_coverage(gff_filtered, bam_path, depth_path)
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_annotation, annotation_name)
