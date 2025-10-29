@@ -16,8 +16,9 @@ import os
 reference_genome = "GCA_000184455.3"
 species = "aspergillus_oryzae"
 augustus_species = "aspergillus_oryzae"
-type_annotation = "gene" # type of annotation used in depth calculation
-annotation_name = "locus_tag"
+type_annotation = "gene" # type of annotation used in depth calculation, the third column
+annotation_name = "locus_tag" # this is what key does the gene/mRNA id follows
+key_words = ["protein_coding"]
 
 ##########################################################################
 # file paths, including all input files
@@ -31,7 +32,7 @@ os.makedirs(main_path, exist_ok=True)
 #assembly_list, this file need to create manually
 assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 
-#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """

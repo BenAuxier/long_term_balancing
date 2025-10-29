@@ -191,13 +191,19 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
 
     return fasta_path, gff_path
 
-def extract_mrna_annotations(input_gff: str, type_annotation: str):
+def extract_annotations(input_gff: str, type_annotation: str, key_words: list = None):
     """
-    Extract lines with type_annotation (i.e., 'mRNA') in the 3rd column from a GFF file.
+    Extract lines with a given type_annotation (e.g., 'mRNA') in the 3rd column from a GFF file,
+    and optionally filter lines that contain all key_words.
 
     Args:
         input_gff (str): Path to the input GFF file (e.g., "GCF_000002655.1_ASM265v1_genomic.gff")
-        output_gff (str): Path to the output file (e.g., "GCF_000002655.1_ASM265v1_type_annotation.gff")
+        type_annotation (str): The annotation type to extract (e.g., "mRNA")
+        key_words (list, optional): List of required keywords that must all appear in the line.
+                                    If None or empty, no keyword filtering is applied.
+
+    Returns:
+        str: Path to the output GFF file
     """
     output_gff = f"{input_gff[:-4]}_{type_annotation}.gff"
     count = 0
@@ -210,11 +216,20 @@ def extract_mrna_annotations(input_gff: str, type_annotation: str):
             # Split columns by tab and check 3rd column
             columns = line.strip().split("\t")
             if len(columns) >= 3 and columns[2] == type_annotation:
-                outfile.write(line)
-                count += 1
+                # If key_words are provided, then each keyword must appear in that line.
+                if key_words:
+                    if all(kw in line for kw in key_words):
+                        outfile.write(line)
+                        count += 1
+                else:
+                    # No keyword filtering, just enter
+                    outfile.write(line)
+                    count += 1
 
     print(f"✅ Extracted {count} {type_annotation} entries to {output_gff}")
     return output_gff
+
+
 
 def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_path: str, species: str):
     """
@@ -263,7 +278,7 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_pa
 
     return output_bam
 
-def prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list):
+def prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words):
     """"""
 
     # path to specific species
@@ -279,7 +294,7 @@ def prepare_anallyze_alignment(base_path, species, reference_genome, type_annota
     modify_name_path(assembly_dir)
 
     # filter the annotation with type_annotation
-    gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)
+    gff_filtered = extract_annotations(ref_gff, type_annotation, key_words)
 
     # alignment
     bam_path = align_assemblies_to_reference(ref_assembly, assembly_dir, main_path, species)
@@ -295,4 +310,4 @@ if __name__ == "__main__":
 
     ref_gff = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
     type_annotation = "gene"
-    gff_filtered = extract_mrna_annotations(ref_gff, type_annotation)
+    gff_filtered = extract_annotations(ref_gff, type_annotation, key_words)

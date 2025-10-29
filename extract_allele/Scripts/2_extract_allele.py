@@ -19,7 +19,7 @@ augustus_species = "aspergillus_fumigatus"
 #annotation_name = "transcript_id"
 type_annotation = "gene"
 annotation_name = "locus_tag"
-
+key_words = None
 ##########################################################################
 # file paths, including all input files
 # The modified csv file that contains the mRNA with depth of interests.
@@ -31,7 +31,7 @@ main_path = f"{base_path}/{species}"
 assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 #assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
 #########################################################################
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list)
+assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 
 """
