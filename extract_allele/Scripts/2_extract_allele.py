@@ -3,16 +3,18 @@ Extract the allele of each gene in multiple genomes
 
 """
 from prepare_alignment import prepare_anallyze_alignment
-from calculate_depth import run_bedtools_coverage
+from prepare_alignment import run_bedtools_depth
 from merge_region import process_results
 from merge_region import process_data
-from load_reference_annotation import load_annotation
+from load_reference import load_annotation
+from load_reference import count_gff_features
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_outputs
 from visualization_clinker import run_clinker_batch
+import os
 
 # information
-reference_genome = "GCF_000002655.1"
+reference_genome = "GCF_000002655.1" # genome annotation should be GCF version
 species = "aspergillus_fumigatus"
 augustus_species = "aspergillus_fumigatus"
 #type_annotation = "mRNA" # type of annotation used in depth calculation

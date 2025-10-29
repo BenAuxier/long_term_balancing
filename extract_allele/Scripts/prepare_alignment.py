@@ -5,6 +5,10 @@ import shutil
 import glob
 import sys
 
+def calculate_genome_number(assembly_list):
+    with open(assembly_list, "r") as f:
+        genome_num = sum(1 for line in f if line.strip())
+    return genome_num
 
 def download_genomes(main_path,assembly_list):
     """
@@ -241,10 +245,8 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_pa
         output_dir (str): Directory to store BAM and index files.
         output_prefix (str): Prefix for the output BAM file name.
     """
-    output_dir = f"{main_path}/alignment"
-    output_prefix = f"alignment_{species}"
-
     # Create output directory if needed
+    output_dir = f"{main_path}/alignment"
     os.makedirs(output_dir, exist_ok=True)
 
     # Find all .fna files
@@ -257,7 +259,7 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, main_pa
     print(f"   Reference: {reference_fna}")
 
     # Output BAM file
-    output_bam = os.path.join(output_dir, f"{output_prefix}.sorted.bam")
+    output_bam = f"{output_dir}/alignment_{species}.sorted.bam"
 
     # Build minimap2 command pipeline
     cmd = (
@@ -302,12 +304,51 @@ def prepare_anallyze_alignment(base_path, species, reference_genome, type_annota
     return assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path
 
 
-if __name__ == "__main__":
-    main_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus"
-    reference_genome = "GCF_000002655.1"
-    type_annotation = "mRNA"
-    species = "aspergillus_fumigatus"
+def run_bedtools_depth(gff_file, main_path, species, reference_genome):
+    """
+    Run bedtools coverage with -mean option to calculate average read depth over GFF regions.
 
-    ref_gff = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
-    type_annotation = "gene"
-    gff_filtered = extract_annotations(ref_gff, type_annotation, key_words)
+    Args:
+        gff_file (str): Path to the GFF3 annotation file.
+        bam_file (str): Path to the BAM alignment file.
+        output_file (str): Path to save the coverage results.
+    """
+    output_file = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
+    bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
+
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    # Build the bedtools command
+    cmd = ["bedtools", "coverage", "-a", gff_file, "-b", bam_file, "-mean"]
+
+    print(f"Running bedtools coverage...\nCommand: {' '.join(cmd)}")
+    print(f"Output will be saved to: {output_file}")
+
+    # Run the command and redirect output to file
+    with open(output_file, "w") as out:
+        subprocess.run(cmd, check=True, stdout=out)
+
+    print(f"✅ Coverage result saved to {output_file}")
+    return bam_file
+
+if __name__ == "__main__":
+    base_path = "/lustre/BIF/nobackup/leng010/test"
+    reference_genome = "GCF_000184455.3"  # genome annotation should be GCF version
+    species = "aspergillus_oryzae"
+    type_annotation = "gene"  # type of annotation used in depth calculation, the third column
+    key_words = ["protein_coding"]
+    assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
+    main_path = f"{base_path}/{species}"
+
+    assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(
+        base_path,
+        species,
+        reference_genome,
+        type_annotation,
+        assembly_list,
+        key_words)
+
+    depth_path = run_bedtools_depth(gff_filtered, main_path, species, reference_genome)
+
+

@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import glob
 from Bio import SeqIO
-from load_reference_annotation import read_gff
+from load_reference import read_gff
 from analyze_position import random_select_assembly
 from augustus_annotation import annotate_file_path
 
