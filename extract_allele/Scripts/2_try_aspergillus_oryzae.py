@@ -15,6 +15,7 @@ import os
 # information
 reference_genome = "GCA_000184455.3"
 species = "aspergillus_oryzae"
+augustus_species = "aspergillus_oryzae"
 type_annotation = "gene" # type of annotation used in depth calculation
 annotation_name = "locus_tag"
 
@@ -89,7 +90,7 @@ candidate_data_summary = analyze_all_candidate_position(candidate_data_test, ann
 
 # extract sequences
 candidates_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
-                          assembly_dir,assembly_num,candidate_data,species)
+                          assembly_dir,assembly_num,candidate_data,augustus_species)
 
 #run clinker
 clinker_output_dir = run_clinker_batch(sequence_path, main_path)

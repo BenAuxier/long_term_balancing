@@ -14,7 +14,7 @@ from visualization_clinker import run_clinker_batch
 # information
 reference_genome = "GCF_000002655.1"
 species = "aspergillus_fumigatus"
-AUG_species = "aspergillus_fumigatus"
+augustus_species = "aspergillus_fumigatus"
 #type_annotation = "mRNA" # type of annotation used in depth calculation
 #annotation_name = "transcript_id"
 type_annotation = "gene"
@@ -89,7 +89,7 @@ candidate_data_summary = analyze_all_candidate_position(candidate_data_test, ann
 
 # extract sequences
 candidates_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
-                          assembly_dir,assembly_num,candidate_data,species)
+                          assembly_dir,assembly_num,candidate_data,augustus_species)
 
 #run clinker
 sequence_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/extract_sequences"
