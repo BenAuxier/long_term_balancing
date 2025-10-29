@@ -43,7 +43,7 @@ def count_gff_features(gff_file):
     return feature_counts
 
 # load annotation
-def read_gff(gff_path, keep_type=None):
+def read_gff(gff_path, ID_label = "locus_tag", keep_type=None):
     """
     Read a GFF3 file and organize it by seq_ID.
 
@@ -82,7 +82,7 @@ def read_gff(gff_path, keep_type=None):
                 "score": row.get("score", "."),
                 "strand": row.get("strand", "."),
                 "phase": row.get("phase", "."),
-                "id": attr_dict.get("ID", "."),
+                "id": attr_dict.get(ID_label, "."),
                 "locus_tag": attr_dict.get("locus_tag", "."),
                 #"transcript_id": attr_dict.get("transcript_id", "."),
                 "attributes": row.get("attributes", ".")
@@ -108,7 +108,7 @@ def annotation_rank(annotation_sorted):
     return annotation_sorted
 
 
-def read_gff_dict(annotation_sorted, annotation_name):
+def read_gff_dict(annotation_sorted):
     """
     Convert annotation storage format.
     :param annotation_sorted: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
@@ -118,13 +118,13 @@ def read_gff_dict(annotation_sorted, annotation_name):
     for seq, annotation_list in annotation_sorted.items():
         annotation_dict[seq] = {}
         for annotation in annotation_list:
-            annotation_id = annotation[annotation_name]
+            annotation_id = annotation["id"]
             annotation_dict[seq][annotation_id] = annotation
 
     return annotation_dict
 
 
-def load_annotation(gff_path, keep_type, annotation_name):
-    annotation_sorted = read_gff(gff_path, keep_type)
-    annotation_sorted_dict = read_gff_dict(annotation_sorted, annotation_name)
+def load_annotation(gff_path, ID_label, type_annotation):
+    annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
+    annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict

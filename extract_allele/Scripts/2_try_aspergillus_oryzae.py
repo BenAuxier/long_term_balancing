@@ -16,11 +16,12 @@ import os
 
 # information
 reference_genome = "GCF_000184455.3" # genome annotation should be GCF version
-species = "aspergillus_oryzae"
-augustus_species = "aspergillus_oryzae"
-type_annotation = "gene" # type of annotation used in depth calculation, the third column
-annotation_name = "locus_tag" # this is what key does the gene/mRNA id follows
-key_words = ["protein_coding"]
+species = "aspergillus_oryzae" # the species
+augustus_species = "aspergillus_oryzae" # the reference species used in AUGUSTUS
+type_annotation = "mRNA" # type of annotation used in depth calculation, the third column
+ID_label = "transcript_id" # this is the key that the gene/mRNA id follows
+
+key_words = None # the keywords that have to be included in the annotation
 
 # file paths, including all input files
 base_path = "/lustre/BIF/nobackup/leng010/test"
@@ -78,16 +79,16 @@ depth_path = run_bedtools_depth(gff_filtered, main_path, species, reference_geno
 #depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
 
 # load annotation data from gff annotation
-annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, type_annotation, annotation_name)
+annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
 
 # processes the input candidate mRNAs
 # Input and output file paths
-candidate_data = process_data(depth_path)
+candidate_data = process_data(depth_path, ID_label)
 #print(candidate_data)
-candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict)
+candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
 
 # test the main code
-candidate_data_test = dict(list(candidate_merge.items())[0:])
+candidate_data_test = dict(list(candidate_merge.items())[0:5])
 
 # print(candidate_data_test)
 candidate_data_summary = analyze_all_candidate_position(candidate_data_test, annotation_sorted, candidate_data,

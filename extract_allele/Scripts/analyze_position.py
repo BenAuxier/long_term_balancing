@@ -51,22 +51,22 @@ def extract_align_seq(bam_path, seq, start, end, full_cover=True):
 
         if read.is_reverse == False:
             orientation = "forward"
-            # the reads corridinates that align to the start-end of reference.
-            read_corridinate_start = find_read_corridinate(read, start)
-            read_corridinate_end = find_read_corridinate(read, end)
+            # the reads coordinate that align to the start-end of reference.
+            read_coordinate_start = find_read_coordinate(read, start)
+            read_coordinate_end = find_read_coordinate(read, end)
 
         else:
             orientation = "reverse"
-            # the reads corridinates that align to the start-end of reference.
-            read_corridinate_start = find_read_corridinate(read, end)
-            read_corridinate_end = find_read_corridinate(read, start)
+            # the reads coordinates that align to the start-end of reference.
+            read_coordinate_start = find_read_coordinate(read, end)
+            read_coordinate_end = find_read_coordinate(read, start)
 
         # dic_align["name"] = name_all      # Complete read name
         dic_align["Genome_accession"] = ncbi_accession  # Read NCBI accession number
         dic_align["seq_ID"] = seq_id  # ID of the sequence, such as chromosome ID
         # if reverse then
-        dic_align["start"] = read_corridinate_start  # Alignment start on read
-        dic_align["end"] = read_corridinate_end  # Alignment end on read
+        dic_align["start"] = read_coordinate_start  # Alignment start on read
+        dic_align["end"] = read_coordinate_end  # Alignment end on read
         dic_align["orientation"] = orientation  # True if read aligns to reverse strand
 
         align_info["seq_info"].append(dic_align)
@@ -75,9 +75,9 @@ def extract_align_seq(bam_path, seq, start, end, full_cover=True):
     return align_info
 
 
-def find_read_corridinate(read, position):
+def find_read_coordinate(read, position):
     """
-    finding the corridinate of read on the position of the reference genome.
+    finding the coordinate of read on the position of the reference genome.
 
     :param read:
     :param position:
@@ -133,12 +133,12 @@ def find_read_corridinate(read, position):
         if length_reference > length_ref_0:
             break
 
-    read_corridinate = hard_mask + read_self_start + length_ref_0 + insertion - deletion
+    read_coordinate = hard_mask + read_self_start + length_ref_0 + insertion - deletion
 
     if read.is_reverse:
-        read_corridinate = read_length - read_corridinate + 1
+        read_coordinate = read_length - read_coordinate + 1
 
-    return (read_corridinate)
+    return (read_coordinate)
 
 
 def extract_align_seq_from_dict(bam_path, position_info):
@@ -158,8 +158,8 @@ def extract_align_seq_from_dict(bam_path, position_info):
 def find_aligned_assembly(align_info):
     aligned_genome = []
     for seq_info in align_info["seq_info"]:
-        ID = seq_info["Genome_accession"]
-        aligned_genome.append(ID)
+        seq_ID = seq_info["Genome_accession"]
+        aligned_genome.append(seq_ID)
 
     return aligned_genome
 
@@ -186,31 +186,6 @@ def find_not_aligned_assembly(aligned_genome, align_info, assembly_path):
     # f"Overall {len(all_genome)} assemblies, aligned {len(aligned_genome)} assemblies, "
     # f"not aligned {len(not_align_list)} assemblies.")
     return not_align_list
-
-
-#######################################
-
-# filter the input file it between up and down limits
-
-
-def extract_candidate_position(filtered_candidate_data):
-    """
-    Extract the necessary position information from the filtered data.
-    :param filtered_candidate_data: A list including each candidate_data as a dictionary.
-    :return: candidate_data, a dictionary, including each mRNA candidates and its information as key-value pairs.
-    """
-    candidate_data = {}
-    for row in filtered_candidate_data:
-        row_data = {
-            "seq_ID": row["seq_ID"],
-            "start": row["start"],
-            "end": row["end"],
-            "depth": row["depth"],
-            "locus_tag": row["locus_tag"]
-        }
-        candidate_data[row["locus_tag"]] = row_data
-    return candidate_data
-
 
 ####################################
 # data analysis

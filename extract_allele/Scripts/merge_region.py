@@ -1,5 +1,5 @@
 # 1. process depth result data
-def process_data(input_file):
+def process_data(input_file,ID_label = "locus_tag"):
     """
     Process the depth data from a txt file (input_file).
     :param input_file: path to the analysis result (depth of alignment at each position).
@@ -55,6 +55,8 @@ def process_data(input_file):
             for key in keys_to_keep:
                 row_new[key] = row.get(key, ".")
 
+            row_new["id"] = row.get(ID_label, ".")
+
             candidate_data.append(row_new)
     return candidate_data
 
@@ -86,9 +88,9 @@ def dict_candidate_data_transfer(candidate_data):
     :return: a dictionary including dictionaries for each mRNA position
     """
     candidate_data_dict = {}
-    for row in candidate_data:
-        locus_tag = row["locus_tag"]
-        candidate_data_dict[locus_tag] = row
+    for candidate in candidate_data:
+        id = candidate["id"]
+        candidate_data_dict[id] = candidate
     return candidate_data_dict
 
 
@@ -120,7 +122,8 @@ def extract_candidate_position_list(filtered_candidate_data):
             "start": row["start"],
             "end": row["end"],
             "depth": row["depth"],
-            "locus_tag": row["locus_tag"]
+            #"locus_tag": row["locus_tag"]
+            "id": row["id"]
         }
         candidate_data_seq[row["seq_ID"]].append(row_data)
 
@@ -164,17 +167,17 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
     for seq, candidates in candidate_data_seq.items():
         annotation_seq = annotation_dict[seq]
         candidate_merge[seq] = []
-        mixed_data = {}
+        merged_data = {}
 
         for i in range(0, len(candidates)):
             candidate_i = candidates[i]
-            gene_id_i = candidate_i["locus_tag"]
+            gene_id_i = candidate_i["id"]
             annotation_candidate_i = annotation_seq[gene_id_i]
 
-            if mixed_data == {}:  # if nothing in mixed data, select the current annotation
+            if merged_data == {}:  # if nothing in merged data, select the current annotation
 
-                # if there is not a mixed data, import this annotation as the mixed data
-                mixed_data = {
+                # if there is not a merged data, import this annotation as the merged data
+                merged_data = {
                     "seq_ID": seq,
                     "region_name": gene_id_i,
                     "start_gene": gene_id_i,
@@ -186,51 +189,51 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
                     "gene_number": 1
                 }
 
-            # Then there is already a mixed data from i-n to i
-            start_i = mixed_data["start"]
-            rank_i = mixed_data["rank"]
+            # Then there is already a merged data from i-n to i
+            start_i = merged_data["start"]
+            rank_i = merged_data["rank"]
 
             # if there is only one candidate in the genomic sequence
             if len(candidates) == 1:
-                candidate_merge[seq].append(mixed_data)
+                candidate_merge[seq].append(merged_data)
                 break
 
             if i == len(candidates) - 1:
-                candidate_merge[seq].append(mixed_data)
+                candidate_merge[seq].append(merged_data)
                 break
 
             elif i <= len(candidates) - 2:
                 # candidate i + 1
                 candidate_i_1 = candidates[i + 1]
-                id_i_1 = candidate_i_1["locus_tag"]
+                id_i_1 = candidate_i_1["id"]
                 annotation_candidate_i_1 = annotation_seq[id_i_1]
                 rank_i_1 = annotation_candidate_i_1["rank"]
 
                 # compare rank of i+1 to i
                 if abs(rank_i_1 - rank_i) <= 2:  # mix
-                    mixed_data_new = {
-                        "seq_ID": mixed_data["seq_ID"],
-                        "region_name": f"{mixed_data["start_gene"]}-{id_i_1}",
-                        "start_gene": mixed_data["start_gene"],
+                    merged_data_new = {
+                        "seq_ID": merged_data["seq_ID"],
+                        "region_name": f"{merged_data["start_gene"]}-{id_i_1}",
+                        "start_gene": merged_data["start_gene"],
                         "end_gene": id_i_1,
                         "start": start_i,
                         "end": annotation_candidate_i_1["end"],
                         "rank": rank_i_1,
-                        "gene_included": mixed_data["gene_included"]
+                        "gene_included": merged_data["gene_included"]
                     }
-                    mixed_data_new["gene_included"].append(id_i_1)
-                    mixed_data_new["gene_number"] = len(mixed_data_new["gene_included"])
+                    merged_data_new["gene_included"].append(id_i_1)
+                    merged_data_new["gene_number"] = len(merged_data_new["gene_included"])
 
-                    mixed_data = mixed_data_new
+                    merged_data = merged_data_new
 
                 else:
-                    candidate_merge[seq].append(mixed_data)
-                    mixed_data = {}
+                    candidate_merge[seq].append(merged_data)
+                    merged_data = {}
 
     return candidate_merge
 
-def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict):
-    candidate_data = process_data(depth_path)
+def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label):
+    candidate_data = process_data(depth_path, ID_label)
     filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
     print(lower_limit, upper_limit)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
