@@ -329,7 +329,7 @@ def run_bedtools_depth(gff_file, main_path, species, reference_genome):
     with open(output_file, "w") as out:
         subprocess.run(cmd, check=True, stdout=out)
 
-    print(f"✅ Coverage result saved to {output_file}")
+    print(f"✅ Result saved to {output_file}")
     return output_file
 
 if __name__ == "__main__":

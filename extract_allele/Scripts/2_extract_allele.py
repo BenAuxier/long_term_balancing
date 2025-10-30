@@ -48,12 +48,11 @@ ref_assembly # Reference genome assembly
 ref_gff # Reference genome annotation
 bam_path # Path to bam file
 
-
-assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies"
-ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.fna"
-ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.gff"
-gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic_gene.gff"
-bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/alignment/alignment_aspergillus_fumigatus.sorted.bam"
+assembly_dir= f"{main_path}/genome_assemblies"
+ref_assembly= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.fna"
+ref_gff= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.gff"
+gff_filtered= f"{assembly_dir}/reference_genome/{reference_genome}_genomic_{type_annotation}.gff"
+bam_path = f"{main_path}/alignment/alignment_{species}.sorted.bam"
 """
 ##########################################################################################
 # verify some basic details
