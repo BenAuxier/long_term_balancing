@@ -258,7 +258,7 @@ def find_final_candidates(candidate_data_summary, candidate_data):
                 if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
                     candidate_info = {
                         "region_name": region_name,
-                        "gene_id": row["locus_tag"],
+                        "id": row["id"],
                         "gene_info": row
                     }
                     final_candidates.append(candidate_info)
@@ -309,9 +309,9 @@ def extract_all_candidates(candidate_data_summary, candidate_data, output_path):
 
 def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
 
-    candidates_path = f"{main_path}/candidate_gene_info"
+    results_path = f"{main_path}/results"
     # find and save final candidate genes and related information
-    extract_all_candidates(candidate_data_summary, candidate_data, candidates_path)
+    extract_all_candidates(candidate_data_summary, candidate_data, results_path)
 
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
@@ -323,4 +323,4 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
     # extract sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
-    return candidates_path,sequence_path
+    return results_path,sequence_path

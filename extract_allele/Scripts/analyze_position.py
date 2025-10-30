@@ -269,7 +269,7 @@ def find_position_depth(id, candidate_data_dict):
     return pos_depth
 
 
-def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff, annotation_name):
+def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff):
     """
 
     :param up_down_locations:
@@ -287,10 +287,10 @@ def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cu
 
     for pos1 in upstream_position:
         # print(pos1)
-        id1 = pos1[annotation_name]
+        id1 = pos1["id"]
         sum_depth_up += find_position_depth(id1, candidate_data_dict)
     for pos2 in downstream_position:
-        id2 = pos2[annotation_name]
+        id2 = pos2["id"]
         sum_depth_down += find_position_depth(id2, candidate_data_dict)
     ave_depth_up = sum_depth_up / up_num
     ave_depth_down = sum_depth_down / down_num
@@ -594,7 +594,7 @@ def count_aligned_reads(all_up_down_loci):
 
 
 def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_data, bam_path, assembly_path, up_num, down_num,
-                                   lower_limit,minimal_alignment,annotation_name, type_annotation):
+                                   lower_limit,minimal_alignment,type_annotation):
     """
     Analyze the position data for each of the candidate positions.
     :param candidate_data: the merged candidate data.
@@ -624,7 +624,7 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
                 continue
 
             # check the mean depth of the positions
-            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit,annotation_name)
+            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit)
             if depth_status == False:
                 continue
 

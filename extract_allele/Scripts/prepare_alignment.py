@@ -330,7 +330,7 @@ def run_bedtools_depth(gff_file, main_path, species, reference_genome):
         subprocess.run(cmd, check=True, stdout=out)
 
     print(f"✅ Coverage result saved to {output_file}")
-    return bam_file
+    return output_file
 
 if __name__ == "__main__":
     base_path = "/lustre/BIF/nobackup/leng010/test"

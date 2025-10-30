@@ -1,47 +1,101 @@
-def count_gff_features(gff_file):
-    """
-    Count the occurrences of each feature type (3rd column) in a GFF file.
+"""
+Extract the allele of each gene in multiple genomes
 
-    Parameters
-    ----------
-    gff_file : str
-        Path to the input GFF file.
+"""
+from prepare_alignment import prepare_anallyze_alignment
+from prepare_alignment import run_bedtools_depth
+from prepare_alignment import calculate_genome_number
+from merge_region import process_results
+from merge_region import process_data
+from load_reference import load_annotation
+from load_reference import count_gff_features
+from analyze_position import analyze_all_candidate_position
+from make_outputs import extract_outputs
+from visualization_clinker import run_clinker_batch
+import os
 
-    Returns
-    -------
-    dict
-        A dictionary where keys are feature types (3rd column)
-        and values are their counts.
-    """
-    feature_counts = {}
+# information
+reference_genome = "GCF_000002655.1" # genome annotation should be GCF version
+species = "aspergillus_fumigatus"
+augustus_species = "aspergillus_fumigatus"
+type_annotation = "mRNA" # type of annotation used in depth calculation, the third column
+ID_label = "transcript_id" # this is the key that the gene/mRNA id follows
+key_words = None
 
-    with open(gff_file, 'r', encoding='utf-8') as file:
-        for line in file:
-            # Skip comments or empty lines
-            if line.startswith('#') or not line.strip():
-                continue
+##########################################################################
+# file paths, including all input files
+base_path = "/lustre/BIF/nobackup/leng010/test"
 
-            # Split the line into columns by tab
-            columns = line.strip().split('\t')
+#assembly_list, this file need to create manually
+assembly_list = f"{base_path}/genome_accessions/{species}.txt"
+##########################################################################
+# path to specific species
+main_path = f"{base_path}/{species}"
+os.makedirs(main_path, exist_ok=True)
 
-            # Ensure the line has at least 3 columns
-            if len(columns) < 3:
-                continue
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
-            # Extract the feature type (3rd column)
-            feature_type = columns[2]
+#########################################################################
 
-            # Count occurrences
-            feature_counts[feature_type] = feature_counts.get(feature_type, 0) + 1
+"""
+assembly_dir = f"{main_path}/genome_assemblies" #path to all genome assemblies
 
-    return feature_counts
+# The txt file that includes the genome assemblies used in alignment.
+# need to be created manually!
+assembly_list = f"{main_path}/genome_accessions.txt 
 
+ref_assembly # Reference genome assembly
+ref_gff # Reference genome annotation
+bam_path # Path to bam file
+"""
 
-# Example usage:
-if __name__ == "__main__":
-    gff_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCA_000184455.3_genomic.gff"
-    result = count_gff_features(gff_path)
+assembly_dir= f"{main_path}/genome_assemblies"
+ref_assembly= f"{assembly_dir}/reference_genome/GCF_000002655.1_genomic.fna"
+ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic.gff"
+gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff"
+bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/alignment/alignment_aspergillus_fumigatus.sorted.bam"
 
-    # Print results
-    for feature, count in result.items():
-        print(f"{feature}\t{count}")
+##########################################################################################
+# verify some basic details
+# check reference annotation .gff file
+feature_counts = count_gff_features(ref_gff)
+
+# calculate number of assembly used in alignment
+genome_num = calculate_genome_number(assembly_list)
+
+# settings
+up_num = 5
+down_num = 5
+assembly_num = 7
+lower_limit = genome_num * 0.2
+upper_limit = genome_num * 0.8
+minimal_alignment = genome_num * 0.3
+extend = 5000
+
+##########################################################################
+# analyze the depth of the genomic regions of
+depth_path = run_bedtools_depth(gff_filtered, main_path, species, reference_genome)
+#depth_path = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
+
+# load annotation data from gff annotation
+annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
+
+# processes the input candidate mRNAs
+# Input and output file paths
+candidate_data = process_data(depth_path, ID_label)
+candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
+
+# test the main code
+#candidate_merge = dict(list(candidate_merge.items())[0:5])
+
+candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
+                        bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,type_annotation)
+
+# extract sequences
+results_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
+                          assembly_dir, assembly_num, candidate_data, augustus_species)
+
+#run clinker
+clinker_output_dir = run_clinker_batch(sequence_path, results_path)
+
+print("finished")
