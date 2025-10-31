@@ -313,7 +313,7 @@ def run_bedtools_depth(gff_file, main_path, species, reference_genome):
         bam_file (str): Path to the BAM alignment file.
         output_file (str): Path to save the coverage results.
     """
-    output_file = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth.txt"
+    output_file = f"{main_path}/depth_calculation/{species}_{reference_genome}_meandepth_test.txt"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
 
     # Ensure output directory exists
