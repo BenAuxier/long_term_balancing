@@ -3,8 +3,9 @@ Extract the allele of each gene in multiple genomes
 
 """
 from prepare_alignment import prepare_anallyze_alignment
-from prepare_alignment import run_bedtools_depth
+#from prepare_alignment import run_bedtools_depth
 from prepare_alignment import calculate_genome_number
+
 from merge_region import process_results
 from merge_region import process_data
 from load_reference import load_annotation
