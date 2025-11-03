@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+import re
+
 from prepare_alignment import run_bedtools_depth
 # information
 reference_genome = "GCF_000002655.1" # genome annotation should be GCF version
@@ -23,77 +26,52 @@ gff_filtered= f"{assembly_dir}/reference_genome/{reference_genome}_genomic_{type
 bam_path = f"{main_path}/alignment/alignment_{species}.sorted.bam"
 
 
-#depth_path = run_bedtools_depth(gff_filtered, main_path, species, reference_genome)
-#!/usr/bin/env python3
-import pysam
 
-def calc_avg_depth(bam_path, gff_path, output_path):
-    bam = pysam.AlignmentFile(bam_path, "rb")
-    out = open(output_path, "w")
+def gff_to_bed(gff_file, bed_file, feature_type=None):
+    """
+    将 GFF/GTF 文件转换为 BED6 格式文件。
 
-    with open(gff_path) as gff:
-        for line in gff:
+    参数:
+        gff_file: str, 输入的 GFF/GTF 文件路径
+        bed_file: str, 输出的 BED 文件路径
+        feature_type: str 或 None, 若指定，则仅转换该类型的 feature (如 'gene', 'exon')
+    """
+    with open(gff_file) as fin, open(bed_file, "w") as fout:
+        for line in fin:
             if line.startswith("#") or not line.strip():
-                out.write(line)
                 continue
 
             fields = line.strip().split("\t")
-            if len(fields) < 5:
+            if len(fields) < 9:
                 continue
 
-            chrom = fields[0]
-            start = int(fields[3]) - 1  # GFF 是 1-based, pysam 是 0-based
-            end = int(fields[4])
+            chrom, source, ftype, start, end, score, strand, phase, attributes = fields
 
-            # 使用 pileup 统计 depth，不包括 deletion/skip
-            total_depth = 0
-            total_bases = 0
+            # 若指定类型，则只保留该类型
+            if feature_type and ftype != feature_type:
+                continue
 
-            for pileupcolumn in bam.pileup(
-                chrom, start, end,
-                truncate=True,              # 仅限区间内
-                stepper="nofilter",          # 不跳过任何reads
-                ignore_overlaps=False,
-                ignore_orphans=False,
-                min_base_quality=0
-            ):
-                pos = pileupcolumn.reference_pos
-                if pos < start or pos >= end:
-                    continue
+            # 坐标转换: GFF 为 1-based, BED 为 0-based 且右端不包含
+            bed_start = int(start) - 1
+            bed_end = int(end)
 
-                # 只统计非 deletion/skip 的 reads
-                n = sum(1 for pileupread in pileupcolumn.pileups
-                        if not pileupread.is_del and not pileupread.is_refskip)
+            # 提取 name（优先 gene_id 或 ID 或 Name）
+            name_match = re.search(r'locus_tag=([^;]+)', attributes)
+            name_match = name_match or re.search(r'gene_id "([^"]+)"', attributes)
+            name_match = name_match or re.search(r'Name=([^;]+)', attributes)
+            name = name_match.group(1) if name_match else ftype
 
-                total_depth += n
-                total_bases += 1
+            # 若 score 无效，则替换为 0
+            if score == ".":
+                score = "0"
 
-            avg_depth = total_depth / total_bases if total_bases > 0 else 0.0
+            fout.write(f"{chrom}\t{bed_start}\t{bed_end}\t{name}\t{score}\t{strand}\n")
 
-            # 添加到 GFF 末尾
-            fields.append(f"AvgDepth={avg_depth:.2f}")
-            out.write("\t".join(fields) + "\n")
-
-    out.close()
-    bam.close()
+    print(f"✅ 已生成 BED 文件: {bed_file}")
 
 
-calc_avg_depth(
-        bam_path,
-        gff_filtered,
-        output_path="/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/depth_calculation/output_with_depth.gff"
-    )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# 示例用法
+if __name__ == "__main__":
+    gff_to_bed(gff_filtered,
+               "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/depth_calculation/output.bed",
+               feature_type="mRNA")
