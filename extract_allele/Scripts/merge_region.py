@@ -206,6 +206,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
                 # candidate i + 1
                 candidate_i_1 = candidates[i + 1]
                 id_i_1 = candidate_i_1["id"]
+                #print(candidates)
                 annotation_candidate_i_1 = annotation_seq[id_i_1]
                 rank_i_1 = annotation_candidate_i_1["rank"]
 

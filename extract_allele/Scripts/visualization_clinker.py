@@ -15,8 +15,12 @@ def run_clinker_batch(sequence_path, results_path):
            - If >=2 valid files exist, run Clinker and save the HTML plot to the output folder.
     """
 
-    output_dir = os.path.join(results_path, "clinker_results")
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = f"{results_path}/clinker_results"
+    output_dir_html = f"{output_dir}/html"
+    output_dir_data = f"{output_dir}/data"
+
+    os.makedirs(output_dir_html, exist_ok=True)
+    os.makedirs(output_dir_data, exist_ok=True)
 
     # Traverse each subdirectory under sequence_path
     for gff_dir in os.listdir(sequence_path):
@@ -49,16 +53,21 @@ def run_clinker_batch(sequence_path, results_path):
 
         # Run clinker
         gene_name = os.path.basename(gff_dir_path)
-        output_html = os.path.join(output_dir, f"{gene_name}_plot.html")
+        output_html = os.path.join(output_dir_html, f"{gene_name}_plot.html")
+
+        output_data = os.path.join(output_dir_data, f"{gene_name}_data.csv")
 
         print(f"🧬 Running Clinker on {len(gff_files)} valid GFF3 files...")
+
+        cmd = ["clinker", "--force", *gff_files, "-p", output_html, "-o", output_data]
+
         try:
-            subprocess.run(["clinker", "--force", *gff_files, "-p", output_html], check=True)
-            print(f"✅ Clinker analysis finished for {gff_dir_path}. Results saved to {output_html}")
+            subprocess.run(cmd, check=True)
+            print(f"✅ Clinker analysis finished for {gff_dir_path}. Results saved to {output_html} and {output_data}.")
         except subprocess.CalledProcessError as e:
             print(f"⚠️ Error running Clinker on {gff_dir_path}: {e}")
 
-    return output_dir
+    return output_html, output_data
 
 if __name__ == "__main__":
     # Example usage

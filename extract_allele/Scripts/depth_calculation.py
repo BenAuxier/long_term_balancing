@@ -1,11 +1,17 @@
 import pandas as pd
 import subprocess
+import os
 
-
-def calculate_genome_coverage(bam_path,depth_single_nucleotides):
+def calculate_genome_coverage(bam_path,main_path):
     """
     Run bedtools genomecov to calculate genome coverage depth
     """
+    output_path = f"{main_path}/depth_calculation"
+    # Ensure output directory exists
+    os.makedirs(output_path, exist_ok=True)
+
+    depth_single_nucleotides = f"{output_path}/single_nucleotides_depth.txt"
+
     # Define command as a list for subprocess
     cmd = [
         "bedtools", "genomecov",
@@ -14,10 +20,12 @@ def calculate_genome_coverage(bam_path,depth_single_nucleotides):
     ]
 
     # Open output file for writing
-    with open("depth_single_nucleotides", "w") as outfile:
+    with open(depth_single_nucleotides, "w") as outfile:
         # Run the command and redirect stdout to the file
         subprocess.run(cmd, stdout=outfile, check=True)
-    return depth_file_single_nucleotides
+
+    print(f"depth for each nucleotide are saved to {depth_single_nucleotides}")
+    return depth_single_nucleotides
 
 def calculate_average_depth(depth_file, gff_file, output_file):
     # Read Depth Files
@@ -57,22 +65,31 @@ def calculate_average_depth(depth_file, gff_file, output_file):
     gff_df.to_csv(output_file, sep="\t", header=False, index=False)
 
     print(f"✅ Completed: Results have been saved to {output_file}")
+    return output_file
+
+def calculate_depth_all(bam_path, main_path, gff_file):
+    depth_single_nucleotides = calculate_genome_coverage(bam_path, main_path)
+    depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+    calculate_average_depth(
+        depth_single_nucleotides,
+        gff_file,
+        depth_path
+    )
+    return depth_path
 
 
 # 示例调用
 if __name__ == "__main__":
-    bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/alignment/alignment_aspergillus_fumigatus.sorted.bam"
-    depth_file_nucleotides = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/depth_calculation/genome_depth.txt"
-    calculate_genome_coverage(bam_path, depth_single_nucleotides)
+    base_path = "/lustre/BIF/nobackup/leng010/test"
+    species = "aspergillus_fumigatus"
+    reference_genome = "GCF_000002655.1"
 
-    depth_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/depth_calculation/GCF_000002655.1_genomic_mRNA_with_depth.gff"
+    main_path = f"{base_path}/{species}"
+    bam_path = f"{main_path}/alignment/alignment_aspergillus_fumigatus.sorted.bam"
+    gff_file = f"{main_path}/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff"
 
-    calculate_average_depth(
-        depth_file_nucleotides,
-        gff_file="/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff",
-        output_file="/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/depth_calculation/GCF_000002655.1_genomic_mRNA_with_depth.gff"
-    )
 
+    depth_path = calculate_depth_all(bam_path, main_path, gff_file)
 
 
 
