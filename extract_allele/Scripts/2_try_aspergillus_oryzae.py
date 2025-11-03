@@ -28,13 +28,13 @@ key_words = None # the keywords that have to be included in the annotation
 base_path = "/lustre/BIF/nobackup/leng010/test"
 
 #assembly_list, this file need to create manually
-assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
+assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 ##########################################################################
 # path to specific species
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """
@@ -47,14 +47,13 @@ assembly_list = f"{main_path}/genome_accessions.txt
 ref_assembly # Reference genome assembly
 ref_gff # Reference genome annotation
 bam_path # Path to bam file
-"""
+
 assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
-assembly_list= f"/lustre/BIF/nobackup/leng010/test/genome_accessions/aspergillus_oryzae.txt"
 ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.fna"
 ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.gff"
 gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic_mRNA.gff"
 bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/alignment_aspergillus_oryzae.sorted.bam"
-
+"""
 ##########################################################################################
 # verify some basic details
 # check reference annotation .gff file
@@ -74,8 +73,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-depth_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/depth_calculation/mean_depth.txt"
+depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+#depth_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
@@ -83,9 +82,9 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path, ID_label)
-
+#print(candidate_data)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
-print()
+
 # test the main code
 #candidate_merge = dict(list(candidate_merge.items())[0:5])
 
@@ -100,4 +99,3 @@ results_path,sequence_path = extract_outputs(candidate_data_summary, reference_g
 clinker_output_dir = run_clinker_batch(sequence_path, results_path)
 
 print("finished")
-
