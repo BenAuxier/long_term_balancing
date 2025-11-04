@@ -455,14 +455,22 @@ def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignmen
         down_number = len(downstream_status)
 
         # incase situations without any findings
-        loci_selected["upstream_rank"] = False
-        loci_selected["upstream_ref_position"] = False
-        loci_selected["upstream_read_sequence_ID"] = False
-        loci_selected["upstream_read_position"] = False
-        loci_selected["downstream_rank"] = False
-        loci_selected["downstream_ref_position"] = False
-        loci_selected["downstream_read_sequence_ID"] = False
-        loci_selected["downstream_read_position"] = False
+        all_keys = [
+            'upstream_rank',
+            'upstream_ref_position',
+            'upstream_read_sequence_ID',
+            'upstream_read_position',
+            'downstream_rank',
+            'downstream_ref_position',
+            'downstream_read_sequence_ID',
+            'downstream_read_position',
+            'interval difference(%)',
+            'seq_chromosome',
+            'read_interval',
+            'ref_interval']
+
+        for key in all_keys:
+            loci_selected[key] = False
 
         for j in range(1, up_number + 1):  # the i th nearest loci in the upstream positions
             # find upstream true locus
@@ -518,35 +526,38 @@ def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignmen
         up_seq = loci_selected["upstream_read_sequence_ID"]
         down_seq = loci_selected["downstream_read_sequence_ID"]
 
-        loci_selected["seq_chromosome"] = False
-        if up_seq and down_seq:
-            common_seq = set(up_seq).intersection(down_seq)
+        if not up_seq or not down_seq:
+            continue
 
-            if len(common_seq) > 0:
-                loci_selected["seq_chromosome"] = common_seq
+        common_seq = set(up_seq).intersection(down_seq)
 
-                # Assume there is only one shared seq in common_seq
-                seq = list(common_seq)[0]
+        if len(common_seq) == 0:
+            continue
 
-                # calculate interval between two reference genes in read genome
-                read_up_position = loci_selected["upstream_read_position"][seq]
-                read_down_position = loci_selected["downstream_read_position"][seq]
-                orientation = read_up_position["orientation"]
+        loci_selected["seq_chromosome"] = common_seq
 
-                read_interval = abs(read_down_position["end"] - read_up_position["start"])
-                loci_selected["read_interval"] = read_interval
-                # print(read_up_position,'\t',read_down_position, interval)
+        # Assume there is only one shared seq in common_seq
+        seq = list(common_seq)[0]
 
-                # calculate interval between two reference genes in reference genome
-                ref_up_position = loci_selected["upstream_ref_position"]
-                ref_down_position = loci_selected["downstream_ref_position"]
-                ref_interval = ref_down_position["end"] - ref_up_position["start"]
-                loci_selected["ref_interval"] = ref_interval
+        # calculate interval between two reference genes in read genome
+        read_up_position = loci_selected["upstream_read_position"][seq]
+        read_down_position = loci_selected["downstream_read_position"][seq]
+        orientation = read_up_position["orientation"]
 
-                interval_diff_pct = abs(ref_interval - read_interval) * 100 / ref_interval
-                loci_selected["interval difference(%)"] = interval_diff_pct
+        read_interval = abs(read_down_position["end"] - read_up_position["start"])
+        loci_selected["read_interval"] = read_interval
+        # print(read_up_position,'\t',read_down_position, interval)
 
-                up_down_loci[genome_id] = loci_selected
+        # calculate interval between two reference genes in reference genome
+        ref_up_position = loci_selected["upstream_ref_position"]
+        ref_down_position = loci_selected["downstream_ref_position"]
+        ref_interval = ref_down_position["end"] - ref_up_position["start"]
+        loci_selected["ref_interval"] = ref_interval
+
+        interval_diff_pct = abs(ref_interval - read_interval) * 100 / ref_interval
+        loci_selected["interval difference(%)"] = interval_diff_pct
+
+        up_down_loci[genome_id] = loci_selected
 
         # print(loci_selected)
 
@@ -556,11 +567,7 @@ def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignmen
 def filter_up_down_loci(up_down_loci, interval_difference=250):
     filtered_up_down_loci = {}
     for genome_id, loci_selected in up_down_loci.items():
-        skip_loop = False
-        for key, value in loci_selected.items():
-            if value == False:
-                skip_loop = True
-        if skip_loop:
+        if loci_selected["interval difference(%)"] is False:
             continue
 
         if loci_selected["interval difference(%)"] >= interval_difference:
@@ -574,9 +581,16 @@ def filter_up_down_loci(up_down_loci, interval_difference=250):
 def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
     ref_allele_status = all_status["ref_allele"]
     diff_allele_status = all_status["diff_allele"]
-
+    print("reference")
     ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations, up_down_alignment)
+    for key, value in ref_up_down_loci.items():
+        #print(key,value)
+        continue
     ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
+    for key, value in ref_up_down_loci_filtered.items():
+        #print(key,value)
+        continue
+    print("divergence")
     diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
     diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)
     all_up_down_loci = {
@@ -639,6 +653,9 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
 
             # finding the genes aligned to the positions
             up_down_alignment = find_candidate_align(up_down_locations, bam_path, assembly_path)
+            for key,value in up_down_alignment.items():
+                #print(key,value)
+                continue
 
             # identify status of random genome assemblies at the positions
             all_status = find_candidate_involvement(up_down_alignment)
@@ -646,18 +663,18 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
             # identify the most distant upstream and downstream loci
             all_up_down_loci = find_up_down_loci(all_status, up_down_locations, up_down_alignment)
 
-            aligned_reads_number = count_aligned_reads(all_up_down_loci)
-
-            # Filter the complicated genomic region where not many reads completely aligned to
-            all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
-            if all_aligned_reads_number < minimal_alignment:
-                continue
-
             # Check whether both alleles exist
             ref_allele_info = all_up_down_loci["ref_up_down_loci"]
             diff_allele_info = all_up_down_loci["diff_up_down_loci"]
 
             if len(ref_allele_info) == 0 or len(diff_allele_info) == 0:
+                continue
+
+            aligned_reads_number = count_aligned_reads(all_up_down_loci)
+
+            # Filter the complicated genomic region where not many reads completely aligned to
+            all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
+            if all_aligned_reads_number < minimal_alignment:
                 continue
 
             summary = {

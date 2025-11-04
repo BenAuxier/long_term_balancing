@@ -81,10 +81,19 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 
 # processes the input candidate mRNAs
 # Input and output file paths
-#candidate_data = process_data(depth_path, ID_label)
-#print(candidate_data)
-candidate_data = {'seq_ID': 'NC_036442.1', 'type': 'mRNA', 'start': 305024, 'end': 305657, 'strand': '-', 'depth': '38.0',
- 'locus_tag': 'AO090103000375', 'product': 'uncharacterized protein', 'id': 'XM_023233308.1'}
-for data in candidate_data:
-    if data["locus_tag"] == "AO090103000375":
+candidate_data = process_data(depth_path, ID_label)
+"""
+candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
+print(candidate_merge)
+for data in candidate_merge["NC_036442.1"]:
+    if data['region_name'] == "XM_023233308.1-XM_023233309.1":
         print(data)
+        
+"""
+candidate_merge = {"NC_036442.1":[{'seq_ID': 'NC_036442.1', 'region_name': 'XM_023233308.1-XM_023233309.1', 'start_gene': 'XM_023233308.1', 'end_gene': 'XM_023233309.1', 'start': 305024, 'end': 307117, 'rank': 116, 'gene_included': ['XM_023233308.1', 'XM_023233309.1'], 'gene_number': 2}]}
+candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
+                        bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,type_annotation)
+for key, value in candidate_data_summary[0].items():
+    print(key)
+
+print(candidate_data_summary[0]["aligned_reads_number"])
