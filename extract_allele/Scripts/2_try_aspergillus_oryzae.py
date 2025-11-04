@@ -82,7 +82,7 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path, ID_label)
-#print(candidate_data)
+print(candidate_data)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
 
 # test the main code

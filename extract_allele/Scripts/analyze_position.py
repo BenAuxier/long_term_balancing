@@ -61,6 +61,13 @@ def extract_align_seq(bam_path, seq, start, end, full_cover=True):
             read_coordinate_start = find_read_coordinate(read, end)
             read_coordinate_end = find_read_coordinate(read, start)
 
+        # if the read exhibits deletion between start and end
+        read_length = abs(read_coordinate_end-read_coordinate_start+1)
+        ref_lenth = abs(end-start+1)
+        #print(read_length,ref_lenth)
+        if read_length < 0.9*ref_lenth: # if the read have larger than 1/10 deletion
+            continue
+
         # dic_align["name"] = name_all      # Complete read name
         dic_align["Genome_accession"] = ncbi_accession  # Read NCBI accession number
         dic_align["seq_ID"] = seq_id  # ID of the sequence, such as chromosome ID
@@ -131,6 +138,8 @@ def find_read_coordinate(read, position):
         # what if 3, skipped region?
 
         if length_reference > length_ref_0:
+            if type_seq == "2":  # deletion
+                deletion = deletion - (length_reference-length_ref_0)
             break
 
     read_coordinate = hard_mask + read_self_start + length_ref_0 + insertion - deletion
