@@ -1,9 +1,9 @@
+#2_magnaporthe_grisea.py
 """
 Extract the allele of each gene in multiple genomes
 
 """
 from prepare_alignment import prepare_anallyze_alignment
-#from prepare_alignment import run_bedtools_depth
 from prepare_alignment import calculate_genome_number
 from depth_calculation import calculate_depth_all
 from merge_region import process_results
@@ -16,9 +16,9 @@ from visualization_clinker import run_clinker_batch
 import os
 
 # information
-reference_genome = "GCF_000184455.2" # genome annotation should be GCF version (RefSeq)
-species = "aspergillus_oryzae" # the species
-augustus_species = "aspergillus_oryzae" # the reference species used in AUGUSTUS
+reference_genome = "GCF_000002495.2" # genome annotation should be GCF version (RefSeq)
+species = "magnaporthe_grisea" # the species
+augustus_species = "magnaporthe_grisea" # the reference species used in AUGUSTUS
 type_annotation = "mRNA" # type of annotation used in depth calculation, the third column
 ID_label = "transcript_id" # this is the key that the gene/mRNA id follows
 
@@ -48,11 +48,11 @@ ref_assembly # Reference genome assembly
 ref_gff # Reference genome annotation
 bam_path # Path to bam file
 
-assembly_dir= f"/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies"
-ref_assembly= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.fna"
-ref_gff= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.gff"
-gff_filtered= "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic_mRNA.gff"
-bam_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/alignment/alignment_aspergillus_oryzae.sorted.bam"
+assembly_dir= f"{main_path}/genome_assemblies"
+ref_assembly= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.fna"
+ref_gff= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.gff"
+gff_filtered= f"{assembly_dir}/reference_genome/{reference_genome}_genomic_{type_annotation}.gff"
+bam_path = f"{main_path}/alignment/alignment_{species}.sorted.bam"
 """
 ##########################################################################################
 # verify some basic details

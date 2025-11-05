@@ -583,13 +583,8 @@ def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
     diff_allele_status = all_status["diff_allele"]
     print("reference")
     ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations, up_down_alignment)
-    for key, value in ref_up_down_loci.items():
-        #print(key,value)
-        continue
     ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
-    for key, value in ref_up_down_loci_filtered.items():
-        #print(key,value)
-        continue
+
     print("divergence")
     diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
     diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)

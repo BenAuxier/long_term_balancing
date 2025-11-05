@@ -259,6 +259,12 @@ def find_final_candidates(candidate_data_summary, candidate_data):
                     candidate_info = {
                         "region_name": region_name,
                         "id": row["id"],
+                        "locus_tag": row["locus_tag"],
+                        "type": row["type"],
+                        "seq_ID": row["seq_ID"],
+                        "start": row["start"],
+                        "end": row["end"],
+                        "depth": row["depth"],
                         "gene_info": row
                     }
                     final_candidates.append(candidate_info)
