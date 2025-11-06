@@ -234,7 +234,7 @@ def extract_annotations(input_gff: str, type_annotation: str, key_words: list = 
     return output_gff
 
 
-def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_dir: str, output_bam: str):
+def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_bam: str):
     """
     Align multiple genome assemblies (.fna) to a reference genome using minimap2 and samtools.
 
@@ -246,9 +246,13 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
     """
 
     # Find all .fna files
-    assembly_files = sorted(glob.glob(os.path.join(assembly_dir, "*.fna")))
+    assembly_files = sorted(
+        glob.glob(os.path.join(assembly_dir, "*.fna")) +
+        glob.glob(os.path.join(assembly_dir, "*.fa"))
+    )
+
     if not assembly_files:
-        print(f"❌ No .fna files found in {assembly_dir}")
+        print(f"❌ No .fna or .fa files found in {assembly_dir}")
         return
 
     print(f"🔹 Found {len(assembly_files)} assemblies for alignment.")
@@ -292,12 +296,12 @@ def prepare_anallyze_alignment(base_path, species, reference_genome, type_annota
     gff_filtered = extract_annotations(ref_gff, type_annotation, key_words)
 
     # alignment
-    output_dir = f"{main_path}/alignment"
-    os.makedirs(output_dir, exist_ok=True)  # Create output directory if needed
-    bam_path = f"{output_dir}/alignment_{species}.sorted.bam"
-    bam_path = align_assemblies_to_reference(ref_assembly, assembly_dir, output_dir, bam_path)
+    bam_path = f"{main_path}/alignment"
+    os.makedirs(bam_path, exist_ok=True)  # Create output directory if needed
+    bam_file = f"{bam_path}/alignment_{species}.sorted.bam"
+    bam_file = align_assemblies_to_reference(ref_assembly, assembly_dir, bam_file)
 
-    return assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path
+    return assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_file
 
 
 def run_bedtools_depth(gff_file, main_path, species, reference_genome):
