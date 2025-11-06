@@ -49,6 +49,7 @@ genomic_region = "XM_003708869.1"
 species = "magnaporthe_grisea"
 oringin_path = f"/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/extract_sequences/{genomic_region}"
 path = "/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/test_clinker"
+os.makedirs(path, exist_ok=True)
 subprocess.run(["cp", "-r", oringin_path, path], check=True)
 test_path = f"/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/test_clinker/{genomic_region}"
 

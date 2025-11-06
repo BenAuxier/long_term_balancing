@@ -77,12 +77,12 @@ candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation
 # generate a candidate_merge data only for this genomic region
 seq_ID = "NC_017844.1"
 region_name = "XM_003708869.1"
-print(candidate_merge)
+#print(candidate_merge)
 for info in candidate_merge[seq_ID]:
     if info["region_name"] == region_name:
         candidate_merge = {seq_ID: [info]}
         break
-print(candidate_merge)
+#print(candidate_merge)
 
 
 # test the main code
@@ -90,6 +90,11 @@ print(candidate_merge)
 
 candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
                         bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,type_annotation)
+candidate_data_info = candidate_data_summary[0]
+
+for key, value in candidate_data_info["position_info"].items():
+    #print(key, value)
+    continue
 
 # extract sequences
 results_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,

@@ -1,4 +1,4 @@
-#2_magnaporthe_grisea.py
+#penicillium_chrysogenum.py
 """
 Extract the allele of each gene in multiple genomes
 
@@ -16,15 +16,17 @@ from visualization_clinker import run_clinker_batch
 from doublecheck_alignment import annotate_file_path
 import os
 
-# information
-reference_genome = "GCF_000002495.2" # genome annotation should be GCF version (RefSeq)
-species = "magnaporthe_grisea" # the species
-augustus_species = "magnaporthe_grisea" # the reference species used in AUGUSTUS
+# information, settings
+reference_genome = "GCF_028827035.1" # genome annotation should be GCF version (RefSeq)
+species = "penicillium_chrysogenum" # the species
+augustus_species = "aspergillus_fumigatus" # the reference species used in AUGUSTUS
+
 type_annotation = "mRNA" # type of annotation used in depth calculation, the third column
 ID_label = "transcript_id" # this is the key that the gene/mRNA id follows
 
 key_words = None # the keywords that have to be included in the annotation
 
+#########################################################
 # file paths, including all input files
 base_path = "/lustre/BIF/nobackup/leng010/test"
 
@@ -35,7 +37,7 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """"""
@@ -64,8 +66,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+#depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)

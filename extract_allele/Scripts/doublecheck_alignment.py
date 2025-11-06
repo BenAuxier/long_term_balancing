@@ -1,4 +1,3 @@
-import os
 from prepare_alignment import align_assemblies_to_reference
 
 import os

@@ -161,7 +161,6 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
     # load annotation
     annotation_sorted = read_gff(gff_path)
 
-
     for summary in candidate_data_summary:
         region_name = summary["region_name"]
         up_down_locations = summary["position_info"]
@@ -205,6 +204,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
                 annotation["start"] = annotation["start"] - start + 1
                 annotation["end"] = annotation["end"] - start + 1
                 extract_annotation.append(annotation)
+                #print(annotation)
 
         # create output path for gff3 file
         #output_dir = os.path.join(output_path, region_name, "reference_annotation")
