@@ -59,7 +59,7 @@ def run_clinker_batch(sequence_path, results_path):
 
         print(f"🧬 Running Clinker on {len(gff_files)} valid GFF3 files...")
 
-        cmd = ["clinker", "--force", *gff_files, "-p", output_html, "-o", output_data]
+        cmd = ["clinker", "--force", *gff_files, "-p", output_html, "-o", output_data, "-i", "0"]
 
         try:
             subprocess.run(cmd, check=True)
