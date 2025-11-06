@@ -65,7 +65,8 @@ def extract_align_seq(bam_path, seq, start, end, full_cover=True):
         read_length = abs(read_coordinate_end-read_coordinate_start+1)
         ref_lenth = abs(end-start+1)
         #print(read_length,ref_lenth)
-        if read_length < 0.9*ref_lenth: # if the read have larger than 1/10 deletion
+
+        if read_length < 0.9 * ref_lenth: # if the read have larger than 1/10 deletion
             continue
 
         # dic_align["name"] = name_all      # Complete read name
@@ -648,9 +649,6 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
 
             # finding the genes aligned to the positions
             up_down_alignment = find_candidate_align(up_down_locations, bam_path, assembly_path)
-            for key,value in up_down_alignment.items():
-                #print(key,value)
-                continue
 
             # identify status of random genome assemblies at the positions
             all_status = find_candidate_involvement(up_down_alignment)
