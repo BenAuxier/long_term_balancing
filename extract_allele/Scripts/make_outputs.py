@@ -321,10 +321,10 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
 
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
-    sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
+    #sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
     # make AUGUSTUS annotation
-    annotate_file_path(sequence_path, augustus_species)
+    #annotate_file_path(sequence_path, augustus_species)
 
     # extract sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
