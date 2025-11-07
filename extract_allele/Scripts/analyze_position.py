@@ -582,11 +582,10 @@ def filter_up_down_loci(up_down_loci, interval_difference=250):
 def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
     ref_allele_status = all_status["ref_allele"]
     diff_allele_status = all_status["diff_allele"]
-    print("reference")
+
     ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations, up_down_alignment)
     ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
 
-    print("divergence")
     diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
     diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)
     all_up_down_loci = {

@@ -147,6 +147,47 @@ def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_
 
     return output_path
 
+def extract_reference_allele_Augustus(candidate_data_summary, reference_genome, gff_path, output_path, extend,
+                             ref_assembly):
+    """
+
+    :param candidate_data_summary:
+    :param reference_genome:
+    :param annotation_sorted: {seq_ID: [row_dict, ...]}
+    :param output_path:
+    :return:
+    """
+    # load annotation
+    annotation_sorted = read_gff(gff_path)
+
+    for summary in candidate_data_summary:
+        region_name = summary["region_name"]
+        up_down_locations = summary["position_info"]
+
+        seq_info_ref = up_down_locations["position"]["seq_ID"]
+        start_ref = up_down_locations["upstream_position"][0]["start"]
+        end_ref = up_down_locations["downstream_position"][-1]["end"]
+
+        # calculate the start and end position of the extraction region
+        # start position
+        start = max(1, start_ref - extend)
+
+        # end position
+        annotation_info = annotation_sorted[seq_info_ref]
+        annotation_end = annotation_info[-1]["end"]
+        end = min(end_ref + extend, annotation_end)
+
+        # extract the sequence from the reference genome
+        extract_allele_sequence(
+            ref_assembly,
+            region_name,
+            f"reference_genome_Augustus_{reference_genome}",
+            seq_info_ref,
+            start,
+            end,
+            "forward",
+            output_path
+        )
 
 def extract_reference_allele(candidate_data_summary, reference_genome, gff_path, output_path, extend,
                              ref_assembly):
@@ -201,10 +242,10 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
             end_anno = annotation["end"]
 
             if start_anno >= start and end_anno <= end:
-                annotation["start"] = annotation["start"] - start + 1
-                annotation["end"] = annotation["end"] - start + 1
-                extract_annotation.append(annotation)
-                #print(annotation)
+                annotation_new = annotation.copy()
+                annotation_new["start"] = annotation["start"] - start + 1
+                annotation_new["end"] = annotation["end"] - start + 1
+                extract_annotation.append(annotation_new)
 
         # create output path for gff3 file
         #output_dir = os.path.join(output_path, region_name, "reference_annotation")
@@ -321,12 +362,15 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
 
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
-    #sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
+    sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
+
+    #extract sequence from reference genome for Augustus annotation
+    extract_reference_allele_Augustus(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
     # make AUGUSTUS annotation
-    #annotate_file_path(sequence_path, augustus_species)
+    annotate_file_path(sequence_path, augustus_species)
 
-    # extract sequence and annotation from the reference genome
+    # extract both sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
     return results_path,sequence_path

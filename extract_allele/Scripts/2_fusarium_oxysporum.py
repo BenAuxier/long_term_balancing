@@ -37,7 +37,7 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """"""
@@ -58,7 +58,7 @@ genome_num = calculate_genome_number(assembly_list)
 # settings
 up_num = 5
 down_num = 5
-assembly_num = 7
+assembly_num = 5
 lower_limit = genome_num * 0.2
 upper_limit = genome_num * 0.8
 minimal_alignment = genome_num * 0.3
@@ -66,8 +66,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-#depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
@@ -93,6 +93,6 @@ clinker_output_dir = run_clinker_batch(sequence_path, results_path)
 
 # align sequence onto reference sequence to doublecheck and debug
 output_main_path = f"{results_path}/sequence_alignments"
-annotate_file_path(sequence_path,output_main_path)
+#annotate_file_path(sequence_path, output_main_path)
 
 print("finished")

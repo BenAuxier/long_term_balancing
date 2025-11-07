@@ -66,6 +66,8 @@ extend = 5000
 # analyze the depth of the genomic regions of
 #depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
 depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+depth_path_filtered = f"{main_path}/depth_calculation/filtered_mean_depth.txt"
+depth_path2 = f"{main_path}/depth_calculation/filtered_region_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)

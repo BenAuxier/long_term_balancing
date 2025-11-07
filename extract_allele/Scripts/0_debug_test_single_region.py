@@ -53,7 +53,7 @@ genome_num = calculate_genome_number(assembly_list)
 # settings
 up_num = 5
 down_num = 5
-assembly_num = 7
+assembly_num = 3
 lower_limit = genome_num * 0.2
 upper_limit = genome_num * 0.8
 minimal_alignment = genome_num * 0.3
@@ -62,35 +62,41 @@ extend = 5000
 ##########################################################################
 # analyze the depth of the genomic regions of
 #depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+depth_path1 = f"{main_path}/depth_calculation/mean_depth.txt"
+depth_path2 = f"{main_path}/depth_calculation/filtered_region_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
 
 # processes the input candidate mRNAs
 # Input and output file paths
-candidate_data = process_data(depth_path, ID_label)
+candidate_data = process_data(depth_path1, ID_label)
 
-candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
+candidate_merge = process_results(depth_path2,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
 
 # for the case to test certain gene
 # generate a candidate_merge data only for this genomic region
-seq_ID = "NC_017844.1"
-region_name = "XM_003708869.1"
+#seq_ID = "NC_017844.1"
+#region_name = "XM_003708869.1"
+
+seq_ID = "NC_017849.1"
+region_name = "XM_003711243.1"
 #print(candidate_merge)
 for info in candidate_merge[seq_ID]:
     if info["region_name"] == region_name:
-        candidate_merge = {seq_ID: [info]}
+        candidate_test = {seq_ID: [info]}
         break
-#print(candidate_merge)
-
+print("candidate_test",candidate_test)
 
 # test the main code
-#candidate_merge = dict(list(candidate_merge.items())[0:5])
+#candidate_merge = dict(list(candidate_merge.items())[0])
+print(candidate_merge)
 
 candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
                         bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,type_annotation)
+
 candidate_data_info = candidate_data_summary[0]
+print("candidate_data_summary")
 
 for key, value in candidate_data_info["position_info"].items():
     #print(key, value)
@@ -101,6 +107,6 @@ results_path,sequence_path = extract_outputs(candidate_data_summary, reference_g
                           assembly_dir, assembly_num, candidate_data, augustus_species)
 
 #run clinker
-clinker_output_dir = run_clinker_batch(sequence_path, results_path)
+#clinker_output_dir = run_clinker_batch(sequence_path, results_path)
 
 print("finished")
