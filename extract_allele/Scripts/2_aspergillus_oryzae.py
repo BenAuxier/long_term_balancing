@@ -33,26 +33,14 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
-"""
-assembly_dir = f"{main_path}/genome_assemblies" #path to all genome assemblies
-
-# The txt file that includes the genome assemblies used in alignment.
-# need to be created manually!
-assembly_list = f"{main_path}/genome_accessions.txt 
-
-ref_assembly # Reference genome assembly
-ref_gff # Reference genome annotation
-bam_path # Path to bam file
-
 assembly_dir= f"{main_path}/genome_assemblies"
 ref_assembly= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.fna"
 ref_gff= f"{assembly_dir}/reference_genome/{reference_genome}_genomic.gff"
 gff_filtered= f"{assembly_dir}/reference_genome/{reference_genome}_genomic_{type_annotation}.gff"
 bam_path = f"{main_path}/alignment/alignment_{species}.sorted.bam"
-"""
 ##########################################################################################
 # verify some basic details
 # check reference annotation .gff file
@@ -72,8 +60,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-#depth_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/depth_calculation/mean_depth.txt"
+#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
@@ -81,7 +69,7 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path, ID_label)
-print(candidate_data)
+
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
 
 # test the main code

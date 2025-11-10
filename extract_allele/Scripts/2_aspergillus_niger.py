@@ -8,6 +8,7 @@ from prepare_alignment import calculate_genome_number
 from depth_calculation import calculate_depth_all
 from merge_region import process_results
 from merge_region import process_data
+from merge_region import select_depth
 from load_reference import load_annotation
 from load_reference import count_gff_features
 from analyze_position import analyze_all_candidate_position
@@ -37,7 +38,7 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """"""
@@ -66,8 +67,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-#depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
@@ -75,6 +76,7 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 # processes the input candidate mRNAs
 # Input and output file paths
 candidate_data = process_data(depth_path, ID_label)
+filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)
 #print(candidate_data)
 candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
 
@@ -86,7 +88,7 @@ candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotat
 
 # extract sequences
 results_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
-                          assembly_dir, assembly_num, candidate_data, augustus_species)
+                          assembly_dir, assembly_num, filtered_candidate_data, augustus_species)
 
 #run clinker
 clinker_output_dir = run_clinker_batch(sequence_path, results_path)

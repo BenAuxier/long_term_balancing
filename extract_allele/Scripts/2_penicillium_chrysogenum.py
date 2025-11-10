@@ -37,7 +37,7 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+#assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """"""
@@ -66,8 +66,8 @@ extend = 5000
 
 ##########################################################################
 # analyze the depth of the genomic regions of
-depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
-#depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+#depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
 
 # load annotation data from gff annotation
 annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)

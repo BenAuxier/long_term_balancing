@@ -211,7 +211,7 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
                 rank_i_1 = annotation_candidate_i_1["rank"]
 
                 # compare rank of i+1 to i
-                if abs(rank_i_1 - rank_i) <= 2:  # mix
+                if abs(rank_i_1 - rank_i) == 1:  # mix
                     merged_data_new = {
                         "seq_ID": merged_data["seq_ID"],
                         "region_name": f"{merged_data["start_gene"]}-{id_i_1}",
