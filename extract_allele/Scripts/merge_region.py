@@ -35,6 +35,7 @@ def process_data(input_file,ID_label = "locus_tag"):
             row = dict(zip(base_cols, parts))
             row["start"] = int(row["start"])
             row["end"] = int(row["end"])
+            row["depth"] = float(row["depth"])
 
             # Parse the 'attributes' column
             attributes = row["attributes"].split(";")
@@ -61,7 +62,7 @@ def process_data(input_file,ID_label = "locus_tag"):
     return candidate_data
 
 
-def select_depth(candidate_data, lower_limit, upper_limit):
+def filter_candidate(candidate_data, lower_limit, upper_limit, minimal_length = 0):
     """
     Only keeps the candidate_data with depth between lower_limit and upper_limit.
     :param candidate_data:
@@ -73,8 +74,12 @@ def select_depth(candidate_data, lower_limit, upper_limit):
 
     filtered_candidate_data = []
     for row in candidate_data:
+        length_gene = row["end"] - row["start"]
+        if length_gene <= minimal_length:
+            continue
+
         depth = row["depth"]
-        depth = float(depth)
+        #depth = float(depth)
         if lower_limit < depth < upper_limit:
             filtered_candidate_data.append(row)
 
@@ -233,9 +238,9 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
     return candidate_merge
 
-def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label):
+def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label, minimal_length = 0):
     candidate_data = process_data(depth_path, ID_label)
-    filtered_candidate_data = select_depth(candidate_data, lower_limit, upper_limit)  # the candidate mRNA data
+    filtered_candidate_data = filter_candidate(candidate_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
     print(lower_limit, upper_limit)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
     candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)

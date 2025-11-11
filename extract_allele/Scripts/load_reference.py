@@ -123,8 +123,37 @@ def read_gff_dict(annotation_sorted):
 
     return annotation_dict
 
+def create_ID_dictionary(gff_path,ID_label_1,ID_label_2,keep_type=None):
+    #all_annotation = read_gff(gff_path, ID_label_1, "CDS")
+    gff_dict = defaultdict(list)
+
+    with open(gff_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+        ])
+
+        for row in reader:
+            if row["seq_ID"].startswith("#"):
+                continue  # skip header/comment lines
+            if keep_type and row["type"] != keep_type:
+                continue
+
+            # parse attributes (GFF3 format: key=value;key=value;...)
+            attr_dict = {}
+            for attr in row["attributes"].split(";"):
+                if attr.strip() == "":
+                    continue
+                if "=" in attr:
+                    key, value = attr.strip().split("=", 1)
+                    row[key] = value
+
 
 def load_annotation(gff_path, ID_label, type_annotation):
     annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
     annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict
+
+if __name__ == "__main__":
+    gff_path = ""
+    ID_label_1 = ""
+    ID_label_2 = ""

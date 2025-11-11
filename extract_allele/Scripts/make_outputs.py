@@ -280,7 +280,13 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         print(f"GFF3 file successfully saved: {output_file}")
 
 
-def find_final_candidates(candidate_data_summary, candidate_data):
+def find_final_candidates(candidate_data_summary, candidate_data, genome_num):
+    """
+
+    :param candidate_data_summary:
+    :param candidate_data:
+    :return:
+    """
     final_candidates = []
 
     for summary in candidate_data_summary:
@@ -295,6 +301,7 @@ def find_final_candidates(candidate_data_summary, candidate_data):
             candidate_seq = row["seq_ID"]
             candidate_start = row["start"]
             candidate_end = row["end"]
+
             if candidate_seq == region_seq:
                 if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
                     candidate_info = {
@@ -305,7 +312,9 @@ def find_final_candidates(candidate_data_summary, candidate_data):
                         "seq_ID": row["seq_ID"],
                         "start": row["start"],
                         "end": row["end"],
+                        "length": row["end"]-row["start"],
                         "depth": row["depth"],
+                        "depth_ratio (%)": row["depth"]*100/genome_num,
                         "gene_info": row
                     }
                     final_candidates.append(candidate_info)
@@ -347,18 +356,17 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return True
 
-def extract_all_candidates(candidate_data_summary, candidate_data, output_path):
-
-    # extract sequences
-    final_candidates = find_final_candidates(candidate_data_summary, candidate_data)
-    save_final_candidates(final_candidates, output_path)
-    return True
-
-def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_path, extend, ref_assembly,assembly_dir,assembly_num,candidate_data,augustus_species):
+def extract_candidates(candidate_data_summary, main_path, candidate_data, genome_num):
 
     results_path = f"{main_path}/results"
+
     # find and save final candidate genes and related information
-    extract_all_candidates(candidate_data_summary, candidate_data, results_path)
+    final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num)
+    save_final_candidates(final_candidates, results_path)
+
+    return results_path
+
+def extract_sequences(candidate_data_summary, reference_genome, gff_path, main_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species):
 
     sequence_path = f"{main_path}/extract_sequences"
     # extract sequence and annotation from other genomes
@@ -373,4 +381,4 @@ def extract_outputs(candidate_data_summary, reference_genome, gff_path, main_pat
     # extract both sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
-    return results_path,sequence_path
+    return sequence_path

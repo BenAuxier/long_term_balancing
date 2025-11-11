@@ -11,7 +11,8 @@ from merge_region import process_data
 from load_reference import load_annotation
 from load_reference import count_gff_features
 from analyze_position import analyze_all_candidate_position
-from make_outputs import extract_outputs
+from make_outputs import extract_candidates
+from make_outputs import extract_sequences
 from visualization_clinker import run_clinker_batch
 from doublecheck_alignment import annotate_file_path
 import os
@@ -77,7 +78,7 @@ annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_lab
 # Input and output file paths
 candidate_data = process_data(depth_path, ID_label)
 #print(candidate_data)
-candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label)
+candidate_merge = process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label, minimal_length)
 
 # test the main code
 #candidate_merge = dict(list(candidate_merge.items())[0:5])
@@ -86,8 +87,9 @@ candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotat
                         bam_path, assembly_list, up_num, down_num, lower_limit, minimal_alignment,type_annotation)
 
 # extract sequences
-results_path,sequence_path = extract_outputs(candidate_data_summary, reference_genome, ref_gff, main_path, extend, ref_assembly,
-                          assembly_dir, assembly_num, candidate_data, augustus_species)
+results_path = extract_candidates(candidate_data_summary, main_path, candidate_data, genome_num)
+sequence_path = extract_sequences(candidate_data_summary, reference_genome, ref_gff,
+                                  main_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species)
 
 #run clinker
 clinker_output_dir = run_clinker_batch(sequence_path, results_path)
