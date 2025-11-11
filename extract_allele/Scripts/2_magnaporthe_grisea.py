@@ -3,7 +3,7 @@
 Extract the allele of each gene in multiple genomes
 
 """
-from prepare_alignment import prepare_anallyze_alignment
+from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import calculate_genome_number
 from depth_calculation import calculate_depth_all
 from merge_region import process_results
@@ -40,7 +40,7 @@ assembly_list = f"{base_path}/genome_accessions/{species}.txt"
 main_path = f"{base_path}/{species}"
 os.makedirs(main_path, exist_ok=True)
 
-assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
+assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_analyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words)
 
 #########################################################################
 """"""

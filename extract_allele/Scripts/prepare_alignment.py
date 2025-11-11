@@ -277,7 +277,7 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
 
     return output_bam
 
-def prepare_anallyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words):
+def prepare_analyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words):
     """"""
 
     # path to specific species
@@ -341,7 +341,7 @@ if __name__ == "__main__":
     assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
     main_path = f"{base_path}/{species}"
 
-    assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_anallyze_alignment(
+    assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_path = prepare_analyze_alignment(
         base_path,
         species,
         reference_genome,
