@@ -61,6 +61,7 @@ lower_limit = genome_num * 0.2
 upper_limit = genome_num * 0.8
 minimal_alignment = genome_num * 0.3
 extend = 5000
+minimal_length = 300 # the minimal length of candidate gene
 
 ##########################################################################
 # analyze the depth of the genomic regions of
