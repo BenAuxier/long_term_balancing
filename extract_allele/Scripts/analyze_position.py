@@ -279,7 +279,7 @@ def find_position_depth(id, candidate_data_dict):
     return pos_depth
 
 
-def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cutoff):
+def filter_up_down_depth(up_down_locations, candidate_data_dict, up_num, down_num, cutoff):
     """
 
     :param up_down_locations:
@@ -289,7 +289,6 @@ def filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, cu
     :param cutoff:
     :return:
     """
-    candidate_data_dict = dict_candidate_data_transfer(candidate_data)
     upstream_position = up_down_locations["upstream_position"]
     downstream_position = up_down_locations["downstream_position"]
     sum_depth_up = 0
@@ -642,7 +641,10 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
                 continue
 
             # check the mean depth of the positions
-            depth_status = filter_up_down_depth(up_down_locations, candidate_data, up_num, down_num, lower_limit)
+
+            candidate_data_dict = dict_candidate_data_transfer(candidate_data)
+
+            depth_status = filter_up_down_depth(up_down_locations, candidate_data_dict, up_num, down_num, lower_limit)
             if depth_status == False:
                 continue
 

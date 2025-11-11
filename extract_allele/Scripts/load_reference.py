@@ -45,7 +45,61 @@ def count_gff_features(gff_file):
 # load annotation
 def read_gff(gff_path, ID_label = "locus_tag", keep_type=None):
     """
-    Read a GFF3 file and organize it by seq_ID.
+        Read a GFF file and organize it by seq_ID.
+
+        :param gff_path: path to the GFF3 file
+        :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
+        :return: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
+        """
+    gff_dict = defaultdict(list)
+
+    with open(gff_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+        ])
+
+        for row in reader:
+            if row["seq_ID"].startswith("#"):
+                continue  # skip header/comment lines
+            if keep_type and row["type"] != keep_type:
+                continue
+
+            row_data = {}
+
+            # parse attributes (GFF3 format: key=value;key=value;...)
+            attr_dict = {}
+            for attr in row["attributes"].split(";"):
+                if attr.strip() == "":
+                    continue
+                if "=" in attr:
+                    key, value = attr.strip().split("=", 1)
+                    row[key] = value
+
+            for key, value in row.items():
+                if key == "attributes":
+                    continue
+                if key == "start" or key == "end":
+                    row_data[key] = int(value)
+                    continue
+                row_data[key] = value
+
+            row_data["id"] = row_data.get(ID_label, ".")
+
+            gff_dict[row["seq_ID"]].append(row_data)
+
+    # sort each list by start position
+    for seq in gff_dict:
+        gff_dict[seq].sort(key=lambda x: x["start"])
+
+    annotation_sorted = annotation_rank(dict(gff_dict))
+
+    return annotation_sorted
+
+
+def read_gff_old(gff_path, ID_label = "locus_tag", keep_type=None):
+    """
+    not used version!
+    Read a GFF file and organize it by seq_ID.
 
     :param gff_path: path to the GFF3 file
     :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
@@ -123,30 +177,29 @@ def read_gff_dict(annotation_sorted):
 
     return annotation_dict
 
-def create_ID_dictionary(gff_path,ID_label_1,ID_label_2,keep_type=None):
-    #all_annotation = read_gff(gff_path, ID_label_1, "CDS")
-    gff_dict = defaultdict(list)
+def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
+    """
+    Create ID dictionary between XP_ and other such as XM_ ID of CDS.
+    Used to transfer the ID to XP, to label them in clinker
+    :param gff_path:
+    :return:
+    """
+    CDS_dict = {}
 
-    with open(gff_path, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
-        ])
+    CDS_annotation = read_gff(gff_path, ID_label, "CDS")
 
-        for row in reader:
-            if row["seq_ID"].startswith("#"):
-                continue  # skip header/comment lines
-            if keep_type and row["type"] != keep_type:
-                continue
+    for seq, annotation_list in CDS_annotation.items():
+        for annotation in annotation_list:
+            protein_id = annotation["protein_id"]
 
-            # parse attributes (GFF3 format: key=value;key=value;...)
-            attr_dict = {}
-            for attr in row["attributes"].split(";"):
-                if attr.strip() == "":
-                    continue
-                if "=" in attr:
-                    key, value = attr.strip().split("=", 1)
-                    row[key] = value
+            if ID_label == "locus_tag":
+                using_ID = annotation["locus_tag"]
+            elif ID_label == "transcript_id":
+                using_ID = annotation["Parent"][4:].split('-')[-1]
 
+            CDS_dict[using_ID] = protein_id
+
+    return CDS_dict
 
 def load_annotation(gff_path, ID_label, type_annotation):
     annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
@@ -154,6 +207,7 @@ def load_annotation(gff_path, ID_label, type_annotation):
     return annotation_sorted, annotation_sorted_dict
 
 if __name__ == "__main__":
-    gff_path = ""
-    ID_label_1 = ""
-    ID_label_2 = ""
+    gff_path = "/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/genome_assemblies/reference_genome/GCF_000002495.2_genomic.gff"
+    ID_label = "transcript_id"
+    CDS_dict = create_ID_dictionary(gff_path,ID_label)
+    print(CDS_dict)

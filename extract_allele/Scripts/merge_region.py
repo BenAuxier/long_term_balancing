@@ -79,7 +79,6 @@ def filter_candidate(candidate_data, lower_limit, upper_limit, minimal_length = 
             continue
 
         depth = row["depth"]
-        #depth = float(depth)
         if lower_limit < depth < upper_limit:
             filtered_candidate_data.append(row)
 
@@ -134,7 +133,7 @@ def extract_candidate_position_list(filtered_candidate_data):
 
     return candidate_data_seq
 
-def merge_candidate_position(candidate_data_seq, annotation_dict):
+def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, transfer_id = False):
     """
     Merge adjacent or only one-position-separated candidate regions into a
     larger candidate region.
@@ -179,6 +178,9 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
             gene_id_i = candidate_i["id"]
             annotation_candidate_i = annotation_seq[gene_id_i]
 
+            if transfer_id:
+                gene_id_i = CDS_dict[gene_id_i] # using the CDS ID
+
             if merged_data == {}:  # if nothing in merged data, select the current annotation
 
                 # if there is not a merged data, import this annotation as the merged data
@@ -210,24 +212,26 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
             elif i <= len(candidates) - 2:
                 # candidate i + 1
                 candidate_i_1 = candidates[i + 1]
-                id_i_1 = candidate_i_1["id"]
-                #print(candidates)
-                annotation_candidate_i_1 = annotation_seq[id_i_1]
+                gene_id_i_1 = candidate_i_1["id"]
+                annotation_candidate_i_1 = annotation_seq[gene_id_i_1]
                 rank_i_1 = annotation_candidate_i_1["rank"]
+
+                if transfer_id:
+                    gene_id_i_1 = CDS_dict[gene_id_i_1] # using the CDS ID
 
                 # compare rank of i+1 to i
                 if abs(rank_i_1 - rank_i) == 1:  # mix
                     merged_data_new = {
                         "seq_ID": merged_data["seq_ID"],
-                        "region_name": f"{merged_data["start_gene"]}-{id_i_1}",
+                        "region_name": f"{merged_data["start_gene"]}-{gene_id_i_1}",
                         "start_gene": merged_data["start_gene"],
-                        "end_gene": id_i_1,
+                        "end_gene": gene_id_i_1,
                         "start": start_i,
                         "end": annotation_candidate_i_1["end"],
                         "rank": rank_i_1,
                         "gene_included": merged_data["gene_included"]
                     }
-                    merged_data_new["gene_included"].append(id_i_1)
+                    merged_data_new["gene_included"].append(gene_id_i_1)
                     merged_data_new["gene_number"] = len(merged_data_new["gene_included"])
 
                     merged_data = merged_data_new
@@ -238,13 +242,11 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
     return candidate_merge
 
-def process_results(depth_path,lower_limit, upper_limit,annotation_sorted_dict, ID_label, minimal_length = 0):
-    candidate_data = process_data(depth_path, ID_label)
+def process_results(CDS_dict,candidate_data,lower_limit, upper_limit,annotation_sorted_dict, transfer_id, minimal_length = 0):
     filtered_candidate_data = filter_candidate(candidate_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
-    print(lower_limit, upper_limit)
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
-    candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
-    return candidate_merge
+    candidate_merge = merge_candidate_position(CDS_dict, candidate_data_seq, annotation_sorted_dict, transfer_id)
+    return filtered_candidate_data, candidate_merge
 
 
 

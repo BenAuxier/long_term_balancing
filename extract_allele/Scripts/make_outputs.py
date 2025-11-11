@@ -280,7 +280,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         print(f"GFF3 file successfully saved: {output_file}")
 
 
-def find_final_candidates(candidate_data_summary, candidate_data, genome_num):
+def find_final_candidates(CDS_dict, candidate_data_summary, candidate_data, genome_num):
     """
 
     :param candidate_data_summary:
@@ -305,16 +305,17 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num):
             if candidate_seq == region_seq:
                 if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
                     candidate_info = {
-                        "region_name": region_name,
+                        "genomic_region": region_name,
                         "id": row["id"],
+                        "protein_id": CDS_dict[row["id"]],
                         "locus_tag": row["locus_tag"],
                         "type": row["type"],
                         "seq_ID": row["seq_ID"],
                         "start": row["start"],
                         "end": row["end"],
-                        "length": row["end"]-row["start"],
-                        "depth": row["depth"],
-                        "depth_ratio (%)": row["depth"]*100/genome_num,
+                        "gene_length": row["end"]-row["start"],
+                        "mean_depth": row["depth"],
+                        "depth_ratio (%)": row["depth"] * 100 / genome_num,
                         "gene_info": row
                     }
                     final_candidates.append(candidate_info)
@@ -356,12 +357,12 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return True
 
-def extract_candidates(candidate_data_summary, main_path, candidate_data, genome_num):
+def extract_candidates(CDS_dict, candidate_data_summary, main_path, candidate_data, genome_num):
 
     results_path = f"{main_path}/results"
 
     # find and save final candidate genes and related information
-    final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num)
+    final_candidates = find_final_candidates(CDS_dict,candidate_data_summary, candidate_data, genome_num)
     save_final_candidates(final_candidates, results_path)
 
     return results_path
