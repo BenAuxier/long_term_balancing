@@ -83,6 +83,7 @@ def read_gff(gff_path, ID_label = "locus_tag", keep_type=None):
                     continue
                 row_data[key] = value
 
+            row_data["attributes"] = row["attributes"]
             row_data["id"] = row_data.get(ID_label, ".")
 
             gff_dict[row["seq_ID"]].append(row_data)

@@ -10,7 +10,7 @@ def calculate_genome_number(assembly_list):
         genome_num = sum(1 for line in f if line.strip())
     return genome_num
 
-def download_genomes(main_path,assembly_list):
+def download_genomes(main_path,assembly_list, assembly_dir):
     """
     Download genome assemblies from NCBI using accession numbers listed in a text file.
 
@@ -18,9 +18,6 @@ def download_genomes(main_path,assembly_list):
         assembly_list (str): Path to the text file containing one accession per line.
         assembly_dir (str): Directory to store the downloaded genome FASTA files.
     """
-
-    assembly_dir = f"{main_path}/genome_assemblies"
-
     # Create output directory if it does not exist
     os.makedirs(assembly_dir, exist_ok=True)
     print(f"Output directory: {assembly_dir}")
@@ -119,7 +116,7 @@ def modify_name_path(ref_assembly):
     for fna_file in fna_files:
         process_fna_file(fna_file)
 
-def download_reference_genome(reference_genome: str, assembly_dir: str):
+def download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff):
     """
     Download genome sequence (.fna) and annotation (.gff) from NCBI using the accession ID.
 
@@ -130,11 +127,9 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
     Returns:
         tuple: Paths to the downloaded FASTA (.fna) and GFF (.gff) files.
     """
-    output_dir = f"{assembly_dir}/reference_genome"
-
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-    print(f"📂 Output directory: {output_dir}")
+    os.makedirs(ref_path, exist_ok=True)
+    print(f"📂 Output directory: {ref_path}")
 
     # Check if 'datasets' command is available
     if shutil.which("datasets") is None:
@@ -144,7 +139,7 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
         )
 
     # Define temporary ZIP file path
-    zip_path = os.path.join(output_dir, f"{reference_genome}.zip")
+    zip_path = os.path.join(ref_path, f"{reference_genome}.zip")
 
     print(f"\n🔹 Downloading {reference_genome} from NCBI...")
 
@@ -160,28 +155,28 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
             check=True
         )
 
-        # Extract sequence (.fna) and annotation (.gff) to output_dir
-        fasta_path, gff_path = None, None
+        # Extract sequence (.fna) and annotation (.gff) to ref_path
+        ref_assembly, ref_gff = None, None
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             for member in zip_ref.namelist():
                 # Extract genomic sequence
                 if member.endswith("genomic.fna"):
-                    fasta_path = os.path.join(output_dir, f"{reference_genome}_genomic.fna")
-                    with zip_ref.open(member) as src, open(fasta_path, "wb") as dst:
+                    ref_assembly = os.path.join(ref_path, f"{reference_genome}_genomic.fna")
+                    with zip_ref.open(member) as src, open(ref_assembly, "wb") as dst:
                         shutil.copyfileobj(src, dst)
                 # Extract annotation (GFF)
                 elif member.endswith("genomic.gff"):
-                    gff_path = os.path.join(output_dir, f"{reference_genome}_genomic.gff")
-                    with zip_ref.open(member) as src, open(gff_path, "wb") as dst:
+                    ref_gff = os.path.join(ref_path, f"{reference_genome}_genomic.gff")
+                    with zip_ref.open(member) as src, open(ref_gff, "wb") as dst:
                         shutil.copyfileobj(src, dst)
 
-        if fasta_path:
-            print(f"✅ FASTA saved: {fasta_path}")
+        if ref_assembly:
+            print(f"✅ FASTA saved: {ref_assembly}")
         else:
             print("⚠️ No FASTA file found in the NCBI dataset.")
 
-        if gff_path:
-            print(f"✅ GFF saved:   {gff_path}")
+        if ref_gff:
+            print(f"✅ GFF saved:   {ref_gff}")
         else:
             print("⚠️ No GFF file found in the NCBI dataset.")
 
@@ -193,9 +188,9 @@ def download_reference_genome(reference_genome: str, assembly_dir: str):
         if os.path.exists(zip_path):
             os.remove(zip_path)
 
-    return fasta_path, gff_path
+    return ref_assembly, ref_gff
 
-def extract_annotations(input_gff: str, type_annotation: str, key_words: list = None):
+def extract_annotations(ref_gff, gff_filtered, type_annotation, key_words):
     """
     Extract lines with a given type_annotation (e.g., 'mRNA') in the 3rd column from a GFF file,
     and optionally filter lines that contain all key_words.
@@ -209,9 +204,8 @@ def extract_annotations(input_gff: str, type_annotation: str, key_words: list = 
     Returns:
         str: Path to the output GFF file
     """
-    output_gff = f"{input_gff[:-4]}_{type_annotation}.gff"
     count = 0
-    with open(input_gff, "r") as infile, open(output_gff, "w") as outfile:
+    with open(ref_gff, "r") as infile, open(gff_filtered, "w") as outfile:
         for line in infile:
             # Skip comment or empty lines
             if line.startswith("#") or not line.strip():
@@ -230,11 +224,11 @@ def extract_annotations(input_gff: str, type_annotation: str, key_words: list = 
                     outfile.write(line)
                     count += 1
 
-    print(f"✅ Extracted {count} {type_annotation} entries to {output_gff}")
-    return output_gff
+    print(f"✅ Extracted {count} {type_annotation} entries to {gff_filtered}")
+    return gff_filtered
 
 
-def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_bam: str):
+def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file):
     """
     Align multiple genome assemblies (.fna) to a reference genome using minimap2 and samtools.
 
@@ -244,6 +238,8 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
         output_dir (str): Directory to store BAM and index files.
         output_prefix (str): Prefix for the output BAM file name.
     """
+    # Create output directory if needed
+    os.makedirs(bam_path, exist_ok=True)
 
     # Find all .fna files
     assembly_files = sorted(
@@ -256,13 +252,13 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
         return
 
     print(f"🔹 Found {len(assembly_files)} assemblies for alignment.")
-    print(f"   Reference: {reference_fna}")
+    print(f"   Reference: {ref_assembly}")
 
     # Build minimap2 command pipeline
     cmd = (
-        f"minimap2 -ax asm5 --secondary=no {reference_fna} {' '.join(assembly_files)} "
+        f"minimap2 -ax asm5 --secondary=no {ref_assembly} {' '.join(assembly_files)} "
         f"| samtools view -bS - "
-        f"| samtools sort -o {output_bam}"
+        f"| samtools sort -o {ref_assembly}"
     )
 
     print(f"\n🚀 Running alignment pipeline...\n{cmd}\n")
@@ -271,37 +267,31 @@ def align_assemblies_to_reference(reference_fna: str, assembly_dir: str, output_
     subprocess.run(cmd, shell=True, check=True)
 
     # Index BAM file
-    subprocess.run(["samtools", "index", output_bam], check=True)
+    subprocess.run(["samtools", "index", bam_file], check=True)
 
-    print(f"✅ Alignment complete.\n   BAM: {output_bam}\n   BAI: {output_bam}.bai")
+    print(f"✅ Alignment complete.\n   BAM: {bam_file}\n   BAI: {bam_file}.bai")
 
-    return output_bam
+    return bam_file
 
-def prepare_analyze_alignment(base_path, species, reference_genome, type_annotation,assembly_list, key_words):
+def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path, bam_file, reference_genome, type_annotation, assembly_list, key_words):
     """"""
 
-    # path to specific species
-    main_path = f"{base_path}/{species}"
-
     # download assemblies
-    assembly_dir, assembly_list = download_genomes(main_path,assembly_list)
+    download_genomes(main_path,assembly_list, assembly_dir)
 
     # download reference genome
-    ref_assembly, ref_gff = download_reference_genome(reference_genome, assembly_dir)
+    download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
 
     # modify the chromosome name of the assemblies
     modify_name_path(assembly_dir)
 
     # filter the annotation with type_annotation
-    gff_filtered = extract_annotations(ref_gff, type_annotation, key_words)
+    extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
 
     # alignment
-    bam_path = f"{main_path}/alignment"
-    os.makedirs(bam_path, exist_ok=True)  # Create output directory if needed
-    bam_file = f"{bam_path}/alignment_{species}.sorted.bam"
-    bam_file = align_assemblies_to_reference(ref_assembly, assembly_dir, bam_file)
+    align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path,bam_file)
 
-    return assembly_dir, ref_assembly, ref_gff, gff_filtered, bam_file
+    return bam_path
 
 
 def run_bedtools_depth(gff_file, main_path, species, reference_genome):
