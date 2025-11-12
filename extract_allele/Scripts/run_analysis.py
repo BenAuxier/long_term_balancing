@@ -32,10 +32,8 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ##########################################################################################
 
-    prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path,
-                              bam_file, reference_genome, type_annotation, assembly_list, key_words)
-
-
+    #prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path,
+    #                          bam_file, reference_genome, type_annotation, assembly_list, key_words)
 
     # verify some basic details
     # check reference annotation .gff file
@@ -57,7 +55,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     ##########################################################################
     # analyze the depth of the genomic regions of
-    # depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
+    depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
     depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
 
     # load annotation data from gff annotation
