@@ -56,7 +56,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ##########################################################################
     # analyze the depth of the genomic regions of
     depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
-    depth_path = calculate_depth_all(bam_path, main_path, gff_filtered)
+    depth_path = calculate_depth_all(bam_file, main_path, gff_filtered)
 
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
@@ -76,7 +76,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
-                                                            bam_path, assembly_list, up_num, down_num, lower_limit,
+                                                            bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation)
 
     for summary in candidate_data_summary:
