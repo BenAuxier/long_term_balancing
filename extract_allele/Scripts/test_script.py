@@ -1,5 +1,17 @@
-from visualization_clinker import run_clinker_batch
-sequence_path = "/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/extract_sequences"
-results_path = "/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/results"
-clinker_output_dir = run_clinker_batch(sequence_path, results_path)
+from make_outputs import extract_allele_sequence
+
+genome_assembly_path = ""
+candidate_gene = ""
+genome_accession = ""
+seq = ""
+start = ""
+end = ""
+orientation = ""
+output_path = ""
+
+def search_gene_info(sequence_annotation, gene_ID):
+
+
+
+extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession, seq, start, end, orientation, output_path)
 

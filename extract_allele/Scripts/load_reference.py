@@ -191,7 +191,10 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
 
     for seq, annotation_list in CDS_annotation.items():
         for annotation in annotation_list:
-            protein_id = annotation["protein_id"]
+            try:
+                protein_id = annotation["protein_id"]
+            except KeyError:
+                continue
 
             if ID_label == "locus_tag":
                 using_ID = annotation["locus_tag"]

@@ -11,8 +11,8 @@ from augustus_annotation import annotate_file_path
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
 
-def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession, seq, start, end, orientation,
-                            output_path):
+def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession,
+                            seq, start, end, orientation, output_path):
     """
     Extract the sequence of specific position of a genome assembly
     :param assembly_dir:

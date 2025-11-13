@@ -258,7 +258,7 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
     cmd = (
         f"minimap2 -ax asm5 --secondary=no {ref_assembly} {' '.join(assembly_files)} "
         f"| samtools view -bS - "
-        f"| samtools sort -o {ref_assembly}"
+        f"| samtools sort -o {bam_file}"
     )
 
     print(f"\n🚀 Running alignment pipeline...\n{cmd}\n")
@@ -289,7 +289,7 @@ def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, r
     extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
 
     # alignment
-    align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path,bam_file)
+    align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file)
 
     return bam_path
 
