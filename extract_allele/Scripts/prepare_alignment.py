@@ -4,6 +4,7 @@ import zipfile
 import shutil
 import glob
 import sys
+from augustus_annotation import run_augustus_on_fasta
 
 def calculate_genome_number(assembly_list):
     with open(assembly_list, "r") as f:
@@ -273,7 +274,7 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
 
     return bam_file
 
-def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path, bam_file, reference_genome, type_annotation, assembly_list, key_words):
+def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path, bam_file, reference_genome, type_annotation, assembly_list, augustus_species, key_words):
     """"""
 
     # download assemblies
@@ -281,6 +282,9 @@ def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, r
 
     # download reference genome
     download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
+
+    # annotate reference genome
+    run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
 
     # modify the chromosome name of the assemblies
     modify_name_path(assembly_dir)

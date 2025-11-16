@@ -25,15 +25,16 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     main_path = f"{base_path}/{species}"
     assembly_dir = f"{main_path}/genome_assemblies"
     ref_path = f"{assembly_dir}/reference_genome"
-    ref_assembly = f"{assembly_dir}/reference_genome/{reference_genome}_genomic.fna"
-    ref_gff = f"{assembly_dir}/reference_genome/{reference_genome}_genomic.gff"
-    gff_filtered = f"{assembly_dir}/reference_genome/{reference_genome}_genomic_{type_annotation}.gff"
+    ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
+    ref_gff = f"{ref_path}/{reference_genome}_genomic.gff"
+    ref_gff_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff"
+    gff_filtered = f"{ref_path}/{reference_genome}_genomic_{type_annotation}.gff"
     bam_path = f"{main_path}/alignment"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ##########################################################################################
 
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path,
-                              bam_file, reference_genome, type_annotation, assembly_list, key_words)
+                              bam_file, reference_genome, type_annotation, assembly_list, augustus_species, key_words)
 
     # verify some basic details
     # check reference annotation .gff file

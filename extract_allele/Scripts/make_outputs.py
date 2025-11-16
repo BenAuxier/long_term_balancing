@@ -377,7 +377,7 @@ def extract_sequences(candidate_data_summary, reference_genome, gff_path, main_p
     extract_reference_allele_Augustus(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
 
     # make AUGUSTUS annotation
-    annotate_file_path(sequence_path, augustus_species)
+    annotate_file_path(sequence_path, augustus_species,"on")
 
     # extract both sequence and annotation from the reference genome
     extract_reference_allele(candidate_data_summary, reference_genome, gff_path, sequence_path, extend, ref_assembly)
