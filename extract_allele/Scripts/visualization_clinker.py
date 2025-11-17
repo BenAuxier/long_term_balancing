@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-def run_clinker_batch(sequence_path, results_path):
+def run_clinker_batch(sequence_path, clinker_output_path):
     """
     Batch run Clinker on all subdirectories containing multiple valid GFF3 files.
 
@@ -14,10 +14,8 @@ def run_clinker_batch(sequence_path, results_path):
            - Identify valid GFF3 files (non-empty and with content beyond headers).
            - If >=2 valid files exist, run Clinker and save the HTML plot to the output folder.
     """
-
-    output_dir = f"{results_path}/clinker_results"
-    output_dir_html = f"{output_dir}/html"
-    output_dir_data = f"{output_dir}/data"
+    output_dir_html = f"{clinker_output_path}/html"
+    output_dir_data = f"{clinker_output_path}/data"
 
     os.makedirs(output_dir_html, exist_ok=True)
     os.makedirs(output_dir_data, exist_ok=True)

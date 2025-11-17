@@ -210,8 +210,6 @@ def merge_candidate_position(candidate_data_seq, annotation_dict, CDS_dict = Fal
     }
     """
     candidate_merge = {}
-    for key, value in annotation_dict.items():
-        print(key, value)
 
     for seq, candidates in candidate_data_seq.items():
         annotation_seq = annotation_dict[seq]

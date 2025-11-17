@@ -10,7 +10,8 @@ from merge_region import process_results
 from merge_region import process_data_augustus
 from load_reference import count_gff_features
 from load_reference import create_ID_dictionary
-from load_reference import load_annotation
+from load_reference import load_annotation_reference
+from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_candidates
 from make_outputs import extract_sequences
@@ -28,17 +29,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ref_path = f"{assembly_dir}/reference_genome"
     ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
     ref_gff = f"{ref_path}/{reference_genome}_genomic.gff"
+    gff_filtered = f"{ref_gff[:-4]}_{type_annotation}.gff"
     ref_gff_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff"
-    gff_filtered = f"{ref_gff_augustus[:-4]}_{type_annotation}.gff"
+    ref_gff3_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff3"
+    gff_filtered_augustus = f"{ref_gff_augustus[:-4]}_{type_annotation}.gff"
     bam_path = f"{main_path}/alignment"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ##########################################################################################
 
-    #prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
-    #                          bam_file, reference_genome, assembly_list, augustus_species)
+    prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
+                              bam_file, reference_genome, assembly_list, augustus_species)
 
     # filter the annotation with type_annotation
-    #gff_filtered = extract_annotations(ref_gff_augustus, gff_filtered, type_annotation, key_words)
+    gff_filtered = extract_annotations(ref_gff_augustus, gff_filtered, type_annotation, key_words)
+    #gff_filtered_augustus = extract_annotations(ref_gff_augustus, gff_filtered_augustus, type_annotation, key_words)
 
     # verify some basic details
     # check reference annotation .gff file
@@ -61,10 +65,12 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ##########################################################################
     # analyze the depth of the genomic regions of
     depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
-    #depth_path = calculate_depth_all(bam_file, main_path, gff_filtered)
+    #depth_path = calculate_depth_all(bam_file, main_path, gff_filtered_augustus)
 
     # load annotation data from gff annotation
-    annotation_sorted, annotation_sorted_dict = load_annotation(gff_filtered, ID_label, type_annotation)
+    annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_filtered, ID_label, type_annotation)
+    annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_filtered_augustus, ID_label, type_annotation)
+
     #CDS_dict = create_ID_dictionary(ref_gff, ID_label)
     CDS_dict = False
 
@@ -75,32 +81,37 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("merging candidate data")
     filtered_candidate_data, candidate_merge = process_results(candidate_data, lower_limit, upper_limit,
-                                                               annotation_sorted_dict, minimal_length, CDS_dict)
-    print(candidate_merge)
-    # test the main code
-    # candidate_merge = dict(list(candidate_merge.items())[0:5])
+                                                               annotation_sorted_dict_augustus, minimal_length, CDS_dict)
+
+    candidate_merge = {"NC_036435.1": candidate_merge["NC_036435.1"]}
 
     print("analyzing candidate data")
-    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted, candidate_data,
+    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, candidate_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation)
-    print(candidate_data_summary)
-    # save final candidate genes
+
+    # save final candidate genes to an excel file
     print("saving candidate genes")
-    results_path = extract_candidates(candidate_data_summary, main_path, filtered_candidate_data, genome_num, CDS_dict)
+    results_path = f"{main_path}/results"
+    results_path = extract_candidates(candidate_data_summary, results_path, filtered_candidate_data,
+                       genome_num,annotation_sorted, CDS_dict)
+
 
     # extract sequences
     print("saving candidate genes")
-    sequence_path = extract_sequences(candidate_data_summary, reference_genome, ref_gff_augustus,
-                                      main_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
+    sequence_path = f"{main_path}/extract_sequences"
+    sequence_path = extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus,
+                                      sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
 
     # run clinker
     print("running clinker")
-    clinker_output_dir = run_clinker_batch(sequence_path, results_path)
+
+    clinker_output_path = f"{results_path}/clinker_results"
+    run_clinker_batch(sequence_path, clinker_output_path)
 
     # align sequence onto reference sequence to doublecheck and debug
-    output_main_path = f"{results_path}/sequence_alignments"
-    annotate_file_path(sequence_path, output_main_path)
+    realign_output_path = f"{results_path}/sequence_alignments"
+    annotate_file_path(sequence_path, realign_output_path)
 
     print("finished")
 

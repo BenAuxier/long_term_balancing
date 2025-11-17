@@ -109,7 +109,7 @@ def read_gff_augustus(gff_path, ID_label = "locus_tag", keep_type=None):
 
     with open(gff_path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "id"
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
         ])
 
         for row in reader:
@@ -119,6 +119,8 @@ def read_gff_augustus(gff_path, ID_label = "locus_tag", keep_type=None):
                 continue
 
             row_data = {}
+
+            row_data["id"] = row["attributes"] # whatever gene or mRNA, Augustus annotates only one id in attributes
 
             for key, value in row.items():
                 if key == "start" or key == "end":
@@ -188,11 +190,16 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
 
     return CDS_dict
 
-def load_annotation(gff_path, ID_label, type_annotation):
-    #annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
-    annotation_sorted = read_gff_augustus(gff_path, ID_label, type_annotation)
+def load_annotation_reference(gff_path, ID_label, type_annotation):
+    annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
     annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict
+
+def load_annotation_augustus(gff_path_augustus, ID_label, type_annotation):
+    annotation_sorted_augustus = read_gff_augustus(gff_path_augustus, ID_label, type_annotation)
+    annotation_sorted_dict_augustus = read_gff_dict(annotation_sorted_augustus)
+    return annotation_sorted_augustus, annotation_sorted_dict_augustus
+
 
 if __name__ == "__main__":
     gff_path = "/lustre/BIF/nobackup/leng010/test/magnaporthe_grisea/genome_assemblies/reference_genome/GCF_000002495.2_genomic.gff"

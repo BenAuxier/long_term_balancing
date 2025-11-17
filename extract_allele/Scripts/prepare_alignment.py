@@ -287,8 +287,11 @@ def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, r
     # download reference genome
     ref_assembly, ref_gff = download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
 
-    # annotate reference genome
+    # annotate reference genome with augustus, output gff
     ref_gff_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
+
+    # annotate reference genome with augustus, output gff
+    ref_gff3_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="on", suffix="_AUGUSTUS")
 
     # alignment
     align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file)

@@ -14,8 +14,8 @@ def find_reference_sequence(sequence_path: str) -> str:
     genomic_region = os.path.basename(sequence_path)
 
     # Constructing Matching Patterns
-    sequence_pattern = f"{sequence_path}/{genomic_region}_reference_genome*.fa"
-    annotation_pattern = f"{sequence_path}/{genomic_region}_reference_genome*.gff3"
+    sequence_pattern = f"{sequence_path}/{genomic_region}_ref_augustus_annotation*.fa"
+    annotation_pattern = f"{sequence_path}/{genomic_region}_ref_augustus_annotation*.gff3"
 
     # Find matching files
     ref_sequence = glob.glob(sequence_pattern)[0]
@@ -27,7 +27,7 @@ def find_reference_sequence(sequence_path: str) -> str:
     else:
         return None
 
-def annotate_file_path(input_dir, output_main_path):
+def annotate_file_path(input_dir, realign_output_path):
     """
     Recursively find all .fa files under INPUT_DIR and run alignment for each.
     """
@@ -36,18 +36,19 @@ def annotate_file_path(input_dir, output_main_path):
             genomic_region = dir
             sequence_path = f"{input_dir}/{genomic_region}"
 
-            print("==========================================",
+            print("==========================================\n",
                   f"Start alignment for genomic region {genomic_region}",
                   f" based files in {sequence_path}.",
-                  "==========================================")
+                  "==========================================\n")
 
             # find reference annotation
             ref_sequence, ref_annotation = find_reference_sequence(sequence_path)
 
             # generate output path
-            output_path = f"{output_main_path}/{genomic_region}"
+            output_path = f"{realign_output_path}/{genomic_region}"
             os.makedirs(output_path, exist_ok=True)
             bam_file = f"{output_path}/{genomic_region}_alignment.sorted.bam"
+            print("bam_file",ref_sequence, sequence_path,bam_file)
 
             # make alignment
             align_assemblies_to_reference(ref_sequence, sequence_path, bam_file)
