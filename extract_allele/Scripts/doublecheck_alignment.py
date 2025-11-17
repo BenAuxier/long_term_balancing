@@ -51,7 +51,7 @@ def annotate_file_path(input_dir, realign_output_path):
             print("bam_file",ref_sequence, sequence_path,bam_file)
 
             # make alignment
-            align_assemblies_to_reference(ref_sequence, sequence_path, bam_file)
+            align_assemblies_to_reference(ref_sequence, sequence_path, output_path, bam_file)
 
             # copy the reference information to the output_path
             subprocess.run(["cp", ref_sequence, output_path], check=True)
