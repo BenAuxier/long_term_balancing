@@ -280,7 +280,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, gff_path,
         print(f"GFF3 file successfully saved: {output_file}")
 
 
-def find_final_candidates(CDS_dict, candidate_data_summary, candidate_data, genome_num):
+def find_final_candidates(candidate_data_summary, candidate_data, genome_num, CDS_dict):
     """
 
     :param candidate_data_summary:
@@ -306,18 +306,21 @@ def find_final_candidates(CDS_dict, candidate_data_summary, candidate_data, geno
                 if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
                     candidate_info = {
                         "genomic_region": region_name,
-                        "id": row["id"],
-                        "protein_id": CDS_dict[row["id"]],
-                        "locus_tag": row["locus_tag"],
-                        "type": row["type"],
-                        "seq_ID": row["seq_ID"],
-                        "start": row["start"],
-                        "end": row["end"],
+                        "id": row.get("id", "."),
+                        "locus_tag": row.get("locus_tag", "."),
+                        "gene_id": row.get("gene_id", "."),
+                        "type": row.get("type", "."),
+                        "seq_ID": row.get("seq_ID", "."),
+                        "start": row.get("start", "."),
+                        "end": row.get("end", "."),
                         "gene_length": row["end"]-row["start"],
-                        "mean_depth": row["depth"],
+                        "mean_depth": row.get("depth", "."),
                         "depth_ratio (%)": row["depth"] * 100 / genome_num,
                         "gene_info": row
                     }
+                    if CDS_dict:
+                        candidate_info["protein_id"] = CDS_dict[row["id"]],
+
                     final_candidates.append(candidate_info)
 
     return final_candidates
@@ -357,13 +360,13 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return True
 
-def extract_candidates(CDS_dict, candidate_data_summary, main_path, candidate_data, genome_num):
+def extract_candidates(candidate_data_summary, main_path, candidate_data, genome_num, CDS_dict):
 
     results_path = f"{main_path}/results"
 
     # find and save final candidate genes and related information
-    final_candidates = find_final_candidates(CDS_dict,candidate_data_summary, candidate_data, genome_num)
-    save_final_candidates(final_candidates, results_path)
+    final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num, CDS_dict)
+    results_path = save_final_candidates(final_candidates, results_path)
 
     return results_path
 

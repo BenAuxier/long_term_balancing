@@ -1,6 +1,7 @@
 # 1. process depth result data
-def process_data(input_file,ID_label = "locus_tag"):
+def process_data_old(input_file,ID_label = "locus_tag"):
     """
+    not used
     Process the depth data from a txt file (input_file).
     :param input_file: path to the analysis result (depth of alignment at each position).
     :return: candidate_data: all candidate_data of the txt file. Example:
@@ -39,6 +40,7 @@ def process_data(input_file,ID_label = "locus_tag"):
 
             # Parse the 'attributes' column
             attributes = row["attributes"].split(";")
+            print("attributes", row["attributes"], attributes)
             for attr in attributes:
                 attr = attr.strip()
                 if not attr:
@@ -61,6 +63,48 @@ def process_data(input_file,ID_label = "locus_tag"):
             candidate_data.append(row_new)
     return candidate_data
 
+def process_data_augustus(input_file,ID_label = "locus_tag"):
+    """
+    not used
+    Process the depth data from a txt file (input_file).
+    :param input_file: path to the analysis result (depth of alignment at each position).
+    :return: candidate_data: all candidate_data of the txt file. Example:
+    [{'seq_ID': 'NC_007194.1',
+     'type': 'mRNA',
+     'start': 216,
+     'end': 836,
+     'strand': '+',
+     'depth': '50.0000000',
+     'Parent': 'gene-AFUA_1G00100',
+     'locus_tag': 'AFUA_1G00100',
+     'product': 'putative MFS monocarboxylate transporter',
+     'transcript_id': 'XM_001481640.1'}, ...]
+     """
+
+    # Read and process data
+    candidate_data = []
+    all_keys = set()
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+
+            # Basic columns (first 8 columns + attributes + depth)
+            base_cols = [
+                "seq_ID", "source", "type", "start", "end",
+                "score", "strand", "phase", "id", "depth"
+            ]
+            row = dict(zip(base_cols, parts))
+            #print("row",row)
+            row["start"] = int(row["start"])
+            row["end"] = int(row["end"])
+            row["depth"] = float(row["depth"])
+
+            candidate_data.append(row)
+    return candidate_data
 
 def filter_candidate(candidate_data, lower_limit, upper_limit, minimal_length = 0):
     """
@@ -126,15 +170,14 @@ def extract_candidate_position_list(filtered_candidate_data):
             "start": row["start"],
             "end": row["end"],
             "depth": row["depth"],
-            #"locus_tag": row["locus_tag"]
             "id": row["id"]
         }
         candidate_data_seq[row["seq_ID"]].append(row_data)
 
     return candidate_data_seq
 
-def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, transfer_id = False):
-    """
+def merge_candidate_position(candidate_data_seq, annotation_dict, CDS_dict = False):
+    """(candidate_data_seq, annotation_sorted_dict, transfer_id, CDS_dict)
     Merge adjacent or only one-position-separated candidate regions into a
     larger candidate region.
     :param candidate_data_seq:
@@ -167,6 +210,8 @@ def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, tran
     }
     """
     candidate_merge = {}
+    for key, value in annotation_dict.items():
+        print(key, value)
 
     for seq, candidates in candidate_data_seq.items():
         annotation_seq = annotation_dict[seq]
@@ -178,7 +223,7 @@ def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, tran
             gene_id_i = candidate_i["id"]
             annotation_candidate_i = annotation_seq[gene_id_i]
 
-            if transfer_id:
+            if CDS_dict:
                 gene_id_i = CDS_dict[gene_id_i] # using the CDS ID
 
             if merged_data == {}:  # if nothing in merged data, select the current annotation
@@ -216,7 +261,7 @@ def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, tran
                 annotation_candidate_i_1 = annotation_seq[gene_id_i_1]
                 rank_i_1 = annotation_candidate_i_1["rank"]
 
-                if transfer_id:
+                if CDS_dict:
                     gene_id_i_1 = CDS_dict[gene_id_i_1] # using the CDS ID
 
                 # compare rank of i+1 to i
@@ -242,10 +287,10 @@ def merge_candidate_position(CDS_dict, candidate_data_seq, annotation_dict, tran
 
     return candidate_merge
 
-def process_results(CDS_dict,candidate_data,lower_limit, upper_limit,annotation_sorted_dict, transfer_id, minimal_length = 0):
+def process_results(candidate_data,lower_limit, upper_limit,annotation_sorted_dict, minimal_length = 0, CDS_dict = False):
     filtered_candidate_data = filter_candidate(candidate_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
     candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
-    candidate_merge = merge_candidate_position(CDS_dict, candidate_data_seq, annotation_sorted_dict, transfer_id)
+    candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict, CDS_dict)
     return filtered_candidate_data, candidate_merge
 
 

@@ -97,21 +97,19 @@ def read_gff(gff_path, ID_label = "locus_tag", keep_type=None):
 
     return annotation_sorted
 
-
-def read_gff_old(gff_path, ID_label = "locus_tag", keep_type=None):
+def read_gff_augustus(gff_path, ID_label = "locus_tag", keep_type=None):
     """
-    not used version!
-    Read a GFF file and organize it by seq_ID.
+        Read an augustus GFF file and organize it by seq_ID.
 
-    :param gff_path: path to the GFF3 file
-    :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
-    :return: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
-    """
+        :param gff_path: path to the GFF3 file
+        :param keep_type: optional, only keep candidate_data with this feature type (e.g., "exon")
+        :return: a dictionary, {seq_ID: [row_dict, ...]} sorted by start position
+        """
     gff_dict = defaultdict(list)
 
     with open(gff_path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f, delimiter="\t", fieldnames=[
-            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "id"
         ])
 
         for row in reader:
@@ -120,29 +118,13 @@ def read_gff_old(gff_path, ID_label = "locus_tag", keep_type=None):
             if keep_type and row["type"] != keep_type:
                 continue
 
-            # parse attributes (GFF3 format: key=value;key=value;...)
-            attr_dict = {}
-            for attr in row["attributes"].split(";"):
-                if attr.strip() == "":
-                    continue
-                if "=" in attr:
-                    key, value = attr.strip().split("=", 1)
-                    attr_dict[key] = value
+            row_data = {}
 
-            row_data = {
-                "seq_ID": row["seq_ID"],
-                "source": row.get("source", "."),
-                "type": row.get("type", "."),
-                "start": int(row["start"]),
-                "end": int(row["end"]),
-                "score": row.get("score", "."),
-                "strand": row.get("strand", "."),
-                "phase": row.get("phase", "."),
-                "id": attr_dict.get(ID_label, "."),
-                "locus_tag": attr_dict.get("locus_tag", "."),
-                #"transcript_id": attr_dict.get("transcript_id", "."),
-                "attributes": row.get("attributes", ".")
-            }
+            for key, value in row.items():
+                if key == "start" or key == "end":
+                    row_data[key] = int(value)
+                    continue
+                row_data[key] = value
 
             gff_dict[row["seq_ID"]].append(row_data)
 
@@ -207,7 +189,8 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
     return CDS_dict
 
 def load_annotation(gff_path, ID_label, type_annotation):
-    annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
+    #annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
+    annotation_sorted = read_gff_augustus(gff_path, ID_label, type_annotation)
     annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict
 

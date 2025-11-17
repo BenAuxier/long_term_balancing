@@ -52,8 +52,9 @@ def annotate_file_path(input_dir,augustus_species, gff3_status = "off"):
                     print(f"Error running AUGUSTUS on {fa_path}: {e}")
     return True
 
-# === Configuration ===
-#input_dir = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test4_extract_seq/extract_allele/XM_741963.1"
-augustus_species = "aspergillus_oryzae"
-input_dir = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.fna"
-output_path = run_augustus_on_fasta(input_dir, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
+if __name__ == "__main__":
+    # === Configuration ===
+    # input_dir = "/lustre/BIF/nobackup/leng010/test/Asp_fumigatus/check_coverage/test4_extract_seq/extract_allele/XM_741963.1"
+    augustus_species = "aspergillus_oryzae"
+    input_dir = "/lustre/BIF/nobackup/leng010/test/aspergillus_oryzae/genome_assemblies/reference_genome/GCF_000184455.2_genomic.fna"
+    output_path = run_augustus_on_fasta(input_dir, augustus_species, gff3_status="off", suffix="_AUGUSTUS")

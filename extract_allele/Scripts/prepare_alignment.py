@@ -106,12 +106,12 @@ def process_fna_file(filepath):
     print(f"Processed: {filename} with prefix '{prefix}'")
 
 
-def modify_name_path(ref_assembly):
+def modify_name_path(assembly_dir):
     # Find all .fna files in the directory
-    fna_files = glob.glob(os.path.join(ref_assembly, "*.fna"))
+    fna_files = glob.glob(os.path.join(assembly_dir, "*.fna"))
 
     if not fna_files:
-        print(f"No .fna files found in {ref_assembly}")
+        print(f"No .fna files found in {assembly_dir}")
         return
 
     for fna_file in fna_files:
@@ -274,23 +274,21 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
 
     return bam_file
 
-def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, gff_filtered, bam_path, bam_file, reference_genome, type_annotation, assembly_list, augustus_species, key_words):
+def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path, bam_file, reference_genome, assembly_list, augustus_species):
     """"""
 
     # download assemblies
-    download_genomes(main_path,assembly_list, assembly_dir)
-
-    # download reference genome
-    download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
-
-    # annotate reference genome
-    run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
+    assembly_dir, assembly_list = download_genomes(main_path,assembly_list, assembly_dir)
+    print("assemblies downloaded")
 
     # modify the chromosome name of the assemblies
     modify_name_path(assembly_dir)
 
-    # filter the annotation with type_annotation
-    extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
+    # download reference genome
+    ref_assembly, ref_gff = download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
+
+    # annotate reference genome
+    ref_gff_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
 
     # alignment
     align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file)

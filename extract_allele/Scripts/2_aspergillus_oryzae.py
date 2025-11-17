@@ -10,8 +10,8 @@ reference_genome = "GCF_000184455.2" # genome annotation should be GCF version (
 species = "aspergillus_oryzae" # the species
 augustus_species = "aspergillus_oryzae" # the reference species used in AUGUSTUS
 
-type_annotation = "mRNA" # type of annotation used in depth calculation, the third column
-ID_label = "transcript_id" # this is the key that the gene/mRNA id follows
+type_annotation = "gene" # type of annotation used in depth calculation, the third column
+ID_label = "gene_id" # this is the key that the gene/mRNA id follows
 key_words = None # the keywords that have to be included in the annotation
 
 # file paths, including all input files
