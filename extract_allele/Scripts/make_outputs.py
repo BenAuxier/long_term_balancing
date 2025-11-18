@@ -293,7 +293,7 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
     :return:
     """
     # load annotation
-    annotation_sorted = read_gff_augustus(gff_path_augustus)
+    annotation_sorted_augustus = read_gff_augustus(gff_path_augustus)
 
     for summary in candidate_data_summary:
         region_name = summary["region_name"]
@@ -308,7 +308,7 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
         start = max(1, start_ref - extend)
 
         # end position
-        annotation_info = annotation_sorted[seq_info_ref]
+        annotation_info = annotation_sorted_augustus[seq_info_ref]
         annotation_end = annotation_info[-1]["end"]
         end = min(end_ref + extend, annotation_end)
 
@@ -378,6 +378,7 @@ def find_reference_gene(annotation_sorted, seq, start, end):
 
     #find the gene id included in a selected genomic region
     seq_annotation = annotation_sorted[seq]
+
     genes_included = []
     for annotation in seq_annotation:
         annotation_id = annotation["id"]
@@ -408,17 +409,18 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
             candidate_seq = row["seq_ID"]
             candidate_start = row["start"]
             candidate_end = row["end"]
-            genes_included = find_reference_gene(annotation_sorted, candidate_seq, candidate_start, candidate_end)
 
             if candidate_seq == region_seq:
                 if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
+
+                    genes_included = find_reference_gene(annotation_sorted, candidate_seq,
+                                                         candidate_start,candidate_end)
+
                     candidate_info = {
                         "genomic_region": region_name,
                         "id": row.get("id", "."),
-                        #"locus_tag": row.get("locus_tag", "."),
-                        #"gene_id": row.get("gene_id", "."),
-                        #"type": row.get("type", "."),
-                        "genes_included": genes_included,
+                        "RefSeq_genes_included": genes_included,
+                        "RefSeq_genes_number": len(genes_included),
                         "seq_ID": row.get("seq_ID", "."),
                         "start": row.get("start", "."),
                         "end": row.get("end", "."),

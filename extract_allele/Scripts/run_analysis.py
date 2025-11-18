@@ -18,14 +18,14 @@ from make_outputs import extract_sequences
 from visualization_clinker import run_clinker_batch
 from doublecheck_alignment import annotate_file_path
 
-def run_whole_analysis(reference_genome, species, augustus_species, type_annotation, ID_label, key_words, base_path):
+def run_whole_analysis(reference_genome, species, augustus_species, type_annotation, ID_ref_label, ID_augustus_label, key_words, base_path):
     # assembly_list, this file need to create manually
-    assembly_list = f"{base_path}/genome_accessions/{species}.txt"
+    assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
     ##########################################################################
     # path to specific species
     main_path = f"{base_path}/{species}"
     assembly_dir = f"{main_path}/genome_assemblies"
-    ref_path = f"{assembly_dir}/reference_genome"
+    ref_path = f"{main_path}/reference_genome"
     ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
     ref_gff = f"{ref_path}/{reference_genome}_genomic.gff"
     gff_filtered = f"{ref_gff[:-4]}_{type_annotation}.gff"
@@ -36,11 +36,11 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ##########################################################################################
 
-    prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
-                              bam_file, reference_genome, assembly_list, augustus_species)
+    #prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
+    #                          bam_file, reference_genome, assembly_list, augustus_species)
 
     # filter the annotation with type_annotation
-    gff_filtered = extract_annotations(ref_gff_augustus, gff_filtered, type_annotation, key_words)
+    gff_filtered = extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
     gff_filtered_augustus = extract_annotations(ref_gff_augustus, gff_filtered_augustus, type_annotation, key_words)
 
     # verify some basic details
@@ -64,18 +64,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ##########################################################################
     # analyze the depth of the genomic regions of
     depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
-    depth_path = calculate_depth_all(bam_file, main_path, gff_filtered_augustus)
+    #depth_path = calculate_depth_all(bam_file, main_path, gff_filtered_augustus)
 
     # load annotation data from gff annotation
-    annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_filtered, ID_label, type_annotation)
-    annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_filtered_augustus, ID_label, type_annotation)
+    annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_filtered, ID_ref_label, type_annotation)
+    annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_filtered_augustus, ID_augustus_label, type_annotation)
 
-    #CDS_dict = create_ID_dictionary(ref_gff, ID_label)
+    print(annotation_sorted)
+
+    #CDS_dict = create_ID_dictionary(ref_gff, ID_ref_label)
     CDS_dict = False
 
     # processes the input candidate mRNAs
     print("loading candidate data")
-    candidate_data = process_data_augustus(depth_path, ID_label)
+    candidate_data = process_data_augustus(depth_path, ID_augustus_label)
     #print(candidate_data)
 
     print("merging candidate data")
@@ -89,6 +91,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, candidate_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation)
+    for summary in candidate_data_summary:
+        print(summary)
+
+    print(len(candidate_data_summary))
 
     # save final candidate genes to an excel file
     print("saving candidate genes")
@@ -97,7 +103,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
                        genome_num,annotation_sorted, CDS_dict)
 
 
-    # extract sequences
+    """# extract sequences
     print("saving candidate genes")
     sequence_path = f"{main_path}/extract_sequences"
     sequence_path = extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus,
@@ -113,7 +119,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     realign_output_path = f"{results_path}/sequence_alignments"
     annotate_file_path(sequence_path, realign_output_path)
 
-    print("finished")
+    print("finished")"""
 
 if __name__ == "__main__":
     # information
