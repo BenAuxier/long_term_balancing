@@ -78,6 +78,9 @@ def calculate_depth_all(bam_path, main_path, gff_file):
     return depth_path
 
 
+
+
+
 # 示例调用
 if __name__ == "__main__":
     base_path = "/lustre/BIF/nobackup/leng010/test"
