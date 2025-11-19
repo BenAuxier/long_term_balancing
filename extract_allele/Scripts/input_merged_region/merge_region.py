@@ -4,7 +4,7 @@ def process_data_old(input_file,ID_label = "locus_tag"):
     not used
     Process the depth data from a txt file (input_file).
     :param input_file: path to the analysis result (depth of alignment at each position).
-    :return: candidate_data: all candidate_data of the txt file. Example:
+    :return: gene_data: all data of the txt file. Example:
     [{'seq_ID': 'NC_007194.1',
      'type': 'mRNA',
      'start': 216,
@@ -18,7 +18,7 @@ def process_data_old(input_file,ID_label = "locus_tag"):
      """
 
     # Read and process data
-    candidate_data = []
+    gene_data = []
     all_keys = set()
 
     with open(input_file, "r", encoding="utf-8") as f:
@@ -60,15 +60,15 @@ def process_data_old(input_file,ID_label = "locus_tag"):
 
             row_new["id"] = row.get(ID_label, ".")
 
-            candidate_data.append(row_new)
-    return candidate_data
+            gene_data.append(row_new)
+    return gene_data
 
 def process_data_augustus(input_file,ID_label = "locus_tag"):
     """
     not used
     Process the depth data from a txt file (input_file).
     :param input_file: path to the analysis result (depth of alignment at each position).
-    :return: candidate_data: all candidate_data of the txt file. Example:
+    :return: gene_data: all data of the txt file. Example:
     [{'seq_ID': 'NC_007194.1',
      'type': 'mRNA',
      'start': 216,
@@ -82,7 +82,7 @@ def process_data_augustus(input_file,ID_label = "locus_tag"):
      """
 
     # Read and process data
-    candidate_data = []
+    gene_data = []
     all_keys = set()
 
     with open(input_file, "r", encoding="utf-8") as f:
@@ -103,49 +103,49 @@ def process_data_augustus(input_file,ID_label = "locus_tag"):
             row["end"] = int(row["end"])
             row["depth"] = float(row["depth"])
 
-            candidate_data.append(row)
-    return candidate_data
+            gene_data.append(row)
+    return gene_data
 
-def filter_candidate(candidate_data, lower_limit, upper_limit, minimal_length = 0):
+def filter_candidate(gene_data, lower_limit, upper_limit, minimal_length = 0):
     """
-    Only keeps the candidate_data with depth between lower_limit and upper_limit.
-    :param candidate_data:
+    Only keeps the gene_data with depth between lower_limit and upper_limit.
+    :param gene_data:
     :param lower_limit:
     :param upper_limit:
-    :return: filtered_candidate_data, same as candidate_data, a list including
+    :return: candidate_data, same as candidate_data, a list including
     dictionaries for each locus position
     """
 
-    filtered_candidate_data = []
-    for row in candidate_data:
+    candidate_data = []
+    for row in gene_data:
         length_gene = row["end"] - row["start"]
         if length_gene <= minimal_length:
             continue
 
         depth = row["depth"]
         if lower_limit < depth < upper_limit:
-            filtered_candidate_data.append(row)
+            candidate_data.append(row)
 
-    return filtered_candidate_data
+    return candidate_data
 
 
-def dict_candidate_data_transfer(candidate_data):
+def dict_gene_data(gene_data):
     """
     Transfer a list into dictionary
-    :param candidate_data: a list including dictionaries for each mRNA position
+    :param gene_data: a list including dictionaries for each mRNA position
     :return: a dictionary including dictionaries for each mRNA position
     """
-    candidate_data_dict = {}
-    for candidate in candidate_data:
+    gene_data_dict = {}
+    for candidate in gene_data:
         id = candidate["id"]
-        candidate_data_dict[id] = candidate
-    return candidate_data_dict
+        gene_data_dict[id] = candidate
+    return gene_data_dict
 
 
-def extract_candidate_position_list(filtered_candidate_data):
+def extract_candidate_position_list(candidate_data):
     """
     Transfer the list to a dictionary, only keep the necessary information
-    :param filtered_candidate_data: A list including each candidate_data as a dictionary.
+    :param candidate_data: A list including each gene_data as a dictionary.
     :return: candidate_data_seq, a dictionary, with key:value =
     sequence_id : [candiate_info1, candiate_info2, ...]
 
@@ -161,7 +161,7 @@ def extract_candidate_position_list(filtered_candidate_data):
 
     """
     candidate_data_seq = {}
-    for row in filtered_candidate_data:
+    for row in candidate_data:
         if not row["seq_ID"] in candidate_data_seq.keys():
             candidate_data_seq[row["seq_ID"]] = []
 
@@ -285,11 +285,13 @@ def merge_candidate_position(candidate_data_seq, annotation_dict, CDS_dict = Fal
 
     return candidate_merge
 
-def process_results(candidate_data,lower_limit, upper_limit,annotation_sorted_dict, minimal_length = 0, CDS_dict = False):
-    filtered_candidate_data = filter_candidate(candidate_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
-    candidate_data_seq = extract_candidate_position_list(filtered_candidate_data)
+def process_merging(gene_region_depth, ID_augustus_label,lower_limit, upper_limit,annotation_sorted_dict, minimal_length = 0, CDS_dict = False):
+
+    gene_data = process_data_augustus(gene_region_depth, ID_augustus_label)
+    candidate_data = filter_candidate(gene_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
+    candidate_data_seq = extract_candidate_position_list(candidate_data)
     candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict, CDS_dict)
-    return filtered_candidate_data, candidate_merge
+    return candidate_data, candidate_merge
 
 
 

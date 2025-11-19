@@ -2,7 +2,7 @@ import csv
 import pysam
 from collections import defaultdict
 import random
-from merge_region import dict_candidate_data_transfer
+from merge_region import dict_gene_data
 
 
 # Generate covered and uncovered genomes at one position.
@@ -610,16 +610,16 @@ def count_aligned_reads(all_up_down_loci):
     return aligned_reads_number
 
 
-def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_data, bam_path, assembly_path, up_num, down_num,
+def analyze_all_candidate_position(selected_data, annotation_sorted, gene_data, bam_path, assembly_path, up_num, down_num,
                                    lower_limit,minimal_alignment,type_annotation):
     """
     Analyze the position data for each of the candidate positions.
-    :param candidate_data: the merged candidate data.
+    :param selected_data: the merged candidate data.
     :param annotation_sorted: genome annotation.
-    :return: candidate_data_positions: a list, including analysis results of the position data
+    :return: candidate_data_summary: a list, including analysis results of the position data
     [{
         "region_name": XM_750984.1,
-        "candidate_data": candidate, # information of this candidate, {seq: [merged_info1, ...], ...}
+        "candidate_data": candidate region, # information of this candidate, {seq: [merged_info1, ...], ...}
         "position_info": up_down_locations, # find upstream and downstream positions, dict
         "align_info": up_down_alignment, # find reads aligned to these positions,dict
         "status_info": all_status, # select assemblies and find whether they are present at these positions
@@ -641,10 +641,8 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, candidate_d
                 continue
 
             # check the mean depth of the positions
-
-            candidate_data_dict = dict_candidate_data_transfer(candidate_data)
-
-            depth_status = filter_up_down_depth(up_down_locations, candidate_data_dict, up_num, down_num, lower_limit)
+            gene_data_dict = dict_gene_data(gene_data)
+            depth_status = filter_up_down_depth(up_down_locations, gene_data_dict, up_num, down_num, lower_limit)
             if depth_status == False:
                 continue
 

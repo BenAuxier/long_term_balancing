@@ -2,9 +2,9 @@ import pandas as pd
 import subprocess
 import os
 
-def calculate_base_depth(bam_path,main_path):
+def calculate_genome_coverage(bam_path,main_path):
     """
-    Run bedtools genomecov to calculate genome depth
+    Run bedtools genomecov to calculate genome coverage depth
     """
     output_path = f"{main_path}/depth_calculation"
     # Ensure output directory exists
@@ -68,7 +68,7 @@ def calculate_average_depth(depth_file, gff_file, output_file):
     return output_file
 
 def calculate_depth_all(bam_path, main_path, gff_file):
-    depth_single_nucleotides = calculate_base_depth(bam_path, main_path)
+    depth_single_nucleotides = calculate_genome_coverage(bam_path, main_path)
     depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
     calculate_average_depth(
         depth_single_nucleotides,
@@ -78,102 +78,8 @@ def calculate_depth_all(bam_path, main_path, gff_file):
     return depth_path
 
 
-def filter_depth_to_bed(depth_single_nucleotides, filtered_nucleotides, lower_limit, upper_limit):
-    """
-    Only select the position with depth between lower_limit and upper_limit.
-    input_file: depth_single_nucleotides, f"{main_path}/depth_calculation"
-    output_file: filtered_depth_nucleotides
 
-    """
 
-    with open(depth_single_nucleotides, "r") as infile, open(filtered_nucleotides, "w") as outfile:
-        for line in infile:
-            chrom, pos, depth = line.strip().split("\t")
-            pos = int(pos)
-            depth = float(depth)
-
-            if lower_limit <= depth <= upper_limit:
-                outfile.write(f"{chrom}\t{pos - 1}\t{pos}\n")
-    print(f"Result have been saved to {depth_single_nucleotides}")
-
-    return depth_single_nucleotides
-
-def merge_nucleotides(filtered_nucleotides, merged_genomic_region, interval = "1"):
-    cmd = [
-        "bedtools", "merge", "-d", interval,
-        "-i", filtered_nucleotides
-    ]
-
-    # Open output file for writing
-    with open(merged_genomic_region, "w") as outfile:
-        # Run the command and redirect stdout to the file
-        subprocess.run(cmd, stdout=outfile, check=True)
-    print(f"Result have been saved to {merged_genomic_region}")
-
-    return merged_genomic_region
-
-def filter_region_length(merged_genomic_region, filtered_genomic_region, minimal_length = 100):
-    with open(merged_genomic_region, "r") as infile, open(filtered_genomic_region, "w") as outfile:
-        for line in infile:
-            cols = line.strip().split()
-            if len(cols) < 3:
-                continue  # skip
-
-            seqid, start, end = cols[0], int(cols[1]), int(cols[2])
-            region_length = end - start - 1
-
-            line_new = f"{seqid}\t{start}\t{end}\t{region_length}\n"
-
-            if region_length > minimal_length:
-                outfile.write(line_new)
-
-    print(f"Result have been saved to {filtered_genomic_region}")
-
-    return filtered_genomic_region
-
-def filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region,filtered_region_nucleotides):
-    dict_single_nucleotides = {}
-    with open(depth_single_nucleotides, "r") as infile:
-        for line in infile:
-            nucleotide_cols = line.strip().split()
-            # transfer 0 based bed format to 1-based
-            n_seqid, n_position, n_depth = nucleotide_cols[0], int(nucleotide_cols[1]), int(nucleotide_cols[2])
-            nucleotide_info = {"seq_id": n_seqid, "position": n_position, "depth": n_depth, "info": line}
-            if n_seqid not in dict_single_nucleotides.keys():
-                dict_single_nucleotides[n_seqid] = []
-            dict_single_nucleotides[n_seqid].append(nucleotide_info)
-    #print(dict_single_nucleotides)
-
-    with open(filtered_genomic_region, "r") as region_file:
-        for region in region_file:
-            region_cols = region.strip().split()
-            # r_start is 0-based, end is 1-based
-            r_seqid, r_start, r_end = region_cols[0], int(region_cols[1]), int(region_cols[2])
-            seq_nucleotides = dict_single_nucleotides[r_seqid]
-            with open(filtered_region_nucleotides, "a") as outfile:
-                for i in range(r_start, r_end):
-                    ouput_line = seq_nucleotides[i]["info"]
-                    outfile.write(ouput_line)
-
-    print(f"Result have been saved to {filtered_region_nucleotides}")
-    return filtered_region_nucleotides
-
-def create_filter_region_nucleotides(main_path, lower_limit, upper_limit, interval, minimal_length):
-    depth_single_nucleotides = f"{main_path}/depth_calculation/single_nucleotides_depth.txt"
-    filtered_nucleotides = f"{main_path}/depth_calculation/filtered_nucleotides.bed"
-    merged_genomic_region = f"{main_path}/depth_calculation/merged_genomic_region.bed"
-    filtered_genomic_region = f"{main_path}/depth_calculation/filtered_genomic_region.bed"
-    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
-
-    filter_depth_to_bed(depth_single_nucleotides, filtered_nucleotides, lower_limit, upper_limit)
-
-    merge_nucleotides(filtered_nucleotides, merged_genomic_region, interval)
-
-    filter_region_length(merged_genomic_region, filtered_genomic_region, minimal_length)
-
-    filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region, filtered_region_nucleotides)
-
-    return filtered_region_nucleotides
 
 # 示例调用
 if __name__ == "__main__":
@@ -182,18 +88,13 @@ if __name__ == "__main__":
     reference_genome = "GCF_000002655.1"
 
     main_path = f"{base_path}/{species}"
-    bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
-    ref_gff_augustus = f"{main_path}/reference_genome/{reference_genome}_genomic_AUGUSTUS.gff"
+    bam_path = f"{main_path}/alignment/alignment_aspergillus_fumigatus.sorted.bam"
+    gff_file = f"{main_path}/genome_assemblies/reference_genome/GCF_000002655.1_genomic_mRNA.gff"
 
-    depth_single_nucleotides = f"{main_path}/depth_calculation/single_nucleotides_depth.txt"
-    filtered_nucleotides = f"{main_path}/depth_calculation/filtered_nucleotides.bed"
-    merged_genomic_region = f"{main_path}/depth_calculation/merged_genomic_region.bed"
-    filtered_genomic_region = f"{main_path}/depth_calculation/filtered_genomic_region.bed"
-    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
-    lower_limit = 4
-    upper_limit = 6
-    minimal_length = 100
-    base_interval = "2"
 
-    filtered_region_nucleotides = create_filter_region_nucleotides(main_path, lower_limit, upper_limit, base_interval, minimal_length)
+    depth_path = calculate_depth_all(bam_path, main_path, gff_file)
+
+
+
+
 

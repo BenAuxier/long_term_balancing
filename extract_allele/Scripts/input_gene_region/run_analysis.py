@@ -36,8 +36,6 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     gff_filtered_augustus = f"{ref_gff_augustus[:-4]}_{type_annotation}.gff"
     bam_path = f"{main_path}/alignment"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
-    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
-
     ##########################################################################################
 
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
@@ -136,7 +134,3 @@ if __name__ == "__main__":
 
     # file paths, including all input files
     base_path = "/lustre/BIF/nobackup/leng010/test"
-
-
-
-

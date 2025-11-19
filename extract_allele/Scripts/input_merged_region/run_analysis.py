@@ -1,3 +1,8 @@
+
+
+
+
+
 """
 Extract the allele of each gene in multiple genomes
 
@@ -6,7 +11,7 @@ from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import calculate_genome_number
 from prepare_alignment import extract_annotations
 from depth_calculation import calculate_depth_all
-from merge_region import process_results
+from merge_region import process_merging
 from merge_region import process_data_augustus
 from load_reference import count_gff_features
 from load_reference import create_ID_dictionary
@@ -36,18 +41,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     gff_filtered_augustus = f"{ref_gff_augustus[:-4]}_{type_annotation}.gff"
     bam_path = f"{main_path}/alignment"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
+    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
+
     ##########################################################################################
 
-    prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
-                              bam_file, reference_genome, assembly_list, augustus_species)
+    #prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path,
+    #                          bam_file, reference_genome, assembly_list, augustus_species)
 
     # filter the annotation with type_annotation
-    gff_filtered = extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
-    gff_filtered_augustus = extract_annotations(ref_gff_augustus, gff_filtered_augustus, type_annotation, key_words)
+    #gff_filtered = extract_annotations(ref_gff, gff_filtered, type_annotation, key_words)
+    #gff_filtered_augustus = extract_annotations(ref_gff_augustus, gff_filtered_augustus, type_annotation, key_words)
 
     # verify some basic details
     # check reference annotation .gff file
-    feature_counts = count_gff_features(ref_gff_augustus)
+    count_gff_features(ref_gff_augustus)
 
     # calculate number of assembly used in alignment
     genome_num = calculate_genome_number(assembly_list)
@@ -65,10 +72,15 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     minimal_length = 300  # the minimal length of candidate gene
     transfer_id = True  # whether transfer genomic region name to CDS ID
 
+    minimal_length = 100 # the minimal length of the genomic region merged in "calculate_depth_all"
+    base_interval = "2"
+
     ##########################################################################
     # analyze the depth of the genomic regions of
-    depth_path = f"{main_path}/depth_calculation/mean_depth.txt"
-    depth_path = calculate_depth_all(bam_file, main_path, gff_filtered_augustus)
+    gene_depth = f"{main_path}/depth_calculation/mean_depth.txt"
+    gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
+    gene_depth, gene_region_depth = calculate_depth_all(bam_file, main_path, gff_filtered_augustus,
+                                                             lower_limit, upper_limit, base_interval, minimal_length)
 
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_filtered, ID_ref_label, type_annotation)
@@ -81,18 +93,17 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     # processes the input candidate mRNAs
     print("loading candidate data")
-    candidate_data = process_data_augustus(depth_path, ID_augustus_label)
-    #print(candidate_data)
+    gene_depth_data = process_data_augustus(gene_depth, ID_augustus_label)
 
     print("merging candidate data")
-    filtered_candidate_data, candidate_merge = process_results(candidate_data, lower_limit, upper_limit,
+    filtered_candidate_data, candidate_merge = process_merging(gene_region_depth, ID_augustus_label, lower_limit, upper_limit,
                                                                annotation_sorted_dict_augustus, minimal_length, CDS_dict)
 
     #test
     #candidate_merge = {"NC_036435.1": candidate_merge["NC_036435.1"]}
 
     print("analyzing candidate data")
-    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, candidate_data,
+    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation)
 

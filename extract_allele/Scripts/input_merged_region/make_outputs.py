@@ -384,7 +384,7 @@ def find_reference_gene(annotation_sorted, seq, start, end):
         annotation_id = annotation["id"]
         annotation_start = annotation["start"]
         annotation_end = annotation["end"]
-        if start < annotation_start < end or start < annotation_end < end:
+        if (start <= annotation_start <= end) or (start <= annotation_end <= end):
             genes_included.append(annotation_id)
 
     return genes_included
@@ -411,7 +411,7 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
             candidate_end = row["end"]
 
             if candidate_seq == region_seq:
-                if region_start <= candidate_start <= region_end and region_start <= candidate_end <= region_end:
+                if (region_start <= candidate_start <= region_end) and (region_start <= candidate_end <= region_end):
 
                     genes_included = find_reference_gene(annotation_sorted, candidate_seq,
                                                          candidate_start,candidate_end)
