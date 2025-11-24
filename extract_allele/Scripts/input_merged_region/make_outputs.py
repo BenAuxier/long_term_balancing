@@ -374,7 +374,7 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
 
         print(f"GFF3 file successfully saved: {output_file}")
 
-def find_reference_gene(annotation_sorted, seq, start, end):
+def find_reference_gene(annotation_sorted, seq, start, end, CDS_dict):
 
     #find the gene id included in a selected genomic region
     seq_annotation = annotation_sorted[seq]
@@ -384,8 +384,14 @@ def find_reference_gene(annotation_sorted, seq, start, end):
         annotation_id = annotation["id"]
         annotation_start = annotation["start"]
         annotation_end = annotation["end"]
-        if (start <= annotation_start <= end) or (start <= annotation_end <= end):
-            genes_included.append(annotation_id)
+
+        if CDS_dict:
+            annotation_id = CDS_dict[annotation_id]
+
+        if (end < annotation_start) or (annotation_end < start):
+            continue
+
+        genes_included.append(annotation_id)
 
     return genes_included
 
@@ -414,7 +420,7 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
                 if (region_start <= candidate_start <= region_end) and (region_start <= candidate_end <= region_end):
 
                     genes_included = find_reference_gene(annotation_sorted, candidate_seq,
-                                                         candidate_start,candidate_end)
+                                                         candidate_start,candidate_end, CDS_dict)
 
                     candidate_info = {
                         "genomic_region": region_name,
@@ -429,15 +435,13 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
                         "depth_ratio (%)": row["depth"] * 100 / genome_num,
                         "gene_info": row
                     }
-                    if CDS_dict:
-                        candidate_info["protein_id"] = CDS_dict[row["id"]],
 
                     final_candidates.append(candidate_info)
 
     return final_candidates
 
 
-def save_final_candidates(final_candidates, output_path):
+def save_final_candidates(final_candidates, output_path, species):
     """
     Save a list of candidate dictionaries to an Excel file.
     Each dictionary becomes one row, and 'gene_info' (a nested dict)
@@ -463,7 +467,7 @@ def save_final_candidates(final_candidates, output_path):
     df = pd.DataFrame(processed_data)
 
     # Build the output file path
-    output_file = os.path.join(output_path, "final_candidates.xlsx")
+    output_file = os.path.join(output_path, f"{species}final_candidates.xlsx")
 
     # Save to Excel (requires 'openpyxl' installed)
     df.to_excel(output_file, index=False)
@@ -471,12 +475,12 @@ def save_final_candidates(final_candidates, output_path):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return output_path
 
-def extract_candidates(candidate_data_summary, results_path, candidate_data, genome_num, annotation_sorted, CDS_dict):
+def extract_candidates(candidate_data_summary, results_path, candidate_data, genome_num, annotation_sorted, species, CDS_dict):
 
     # find and save final candidate genes and related information
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num,
                                              annotation_sorted, CDS_dict)
-    results_path = save_final_candidates(final_candidates, results_path)
+    results_path = save_final_candidates(final_candidates, results_path, species)
 
     return results_path
 

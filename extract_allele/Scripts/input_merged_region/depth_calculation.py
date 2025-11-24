@@ -170,14 +170,14 @@ def create_filter_region_nucleotides(main_path, lower_limit, upper_limit, interv
 
 def calculate_depth_all(bam_path, main_path, gff_file, lower_limit, upper_limit, base_interval, minimal_length):
     depth_single_nucleotides = calculate_base_depth(bam_path, main_path)
-    gene_depth_path = f"{main_path}/depth_calculation/mean_depth_gene.txt"
-    gene_depth_path = calculate_average_depth(depth_single_nucleotides, gff_file, gene_depth_path)
+    gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
+    calculate_average_depth(depth_single_nucleotides, gff_file, gene_depth)
 
     filtered_region_nucleotides = create_filter_region_nucleotides(main_path, lower_limit, upper_limit, base_interval, minimal_length)
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    gene_region_depth = calculate_average_depth(depth_single_nucleotides, gff_file, gene_depth_path)
+    calculate_average_depth(filtered_region_nucleotides, gff_file, gene_region_depth)
 
-    return gene_depth_path, gene_region_depth
+    return gene_depth, gene_region_depth
 
 
 
