@@ -101,7 +101,7 @@ def extract_region_seq(allele_info, region_name, label, assembly_dir, output_pat
         output_dir = os.path.join(output_path, region_name)
         os.makedirs(output_dir, exist_ok=True)
 
-        file_name = f"{region_name}__{genome}__{seq}__{start_read}-{end_read}__{label}"
+        file_name = f"{region_name}__{genome}__{seq_info}__{start_read}-{end_read}__{label}"
         output_file = os.path.join(output_dir, f"{file_name}.fa")
 
         extract_allele_sequence(
