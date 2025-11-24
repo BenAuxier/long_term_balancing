@@ -76,10 +76,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
 
-    """"""
+    """
     gene_depth, gene_region_depth = calculate_depth_all(bam_file, main_path, gff_augustus_filtered,
                                                              lower_limit, upper_limit, base_interval, minimal_length)
-
+    """
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
     annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label, type_annotation_augustus)
@@ -98,7 +98,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
                                                                annotation_sorted_dict_augustus, minimal_length)
 
     #test
-    #candidate_merge = {"NC_036435.1": candidate_merge["NC_036435.1"]}
+    candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
 
     print("analyzing candidate data")
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,

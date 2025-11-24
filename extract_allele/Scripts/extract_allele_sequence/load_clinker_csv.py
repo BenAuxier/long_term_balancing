@@ -5,13 +5,19 @@ import pandas as pd
 def load_clinker_csv(file_path):
     data = []
     current_title = None
-    with open("your_file.txt", "r") as f:
+    with open(file_path, "r") as f:
         for line in f:
             line = line.strip()
 
             # Title row (identified by “vs”)
             if " vs " in line:
-                current_title = line
+                current_title = line.split("vs")
+
+                quary_sequence = current_title[0].strip()
+                target_sequence = current_title[1].strip()
+
+                print(quary_sequence, target_sequence)
+
                 continue
 
             # Skip separator lines and blank lines
@@ -31,11 +37,12 @@ def load_clinker_csv(file_path):
                 })
 
     df = pd.DataFrame(data)
-    print(df)
+    #print(df)
 
 if __name__ == "__main__":
     # Convert to DataFrame
     # data of MAT1-2-4
-    file_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results/clinker_results/data/g3347.t1-g3348.t1.csv"
+    result_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results"
+    file_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_data.csv"
     load_clinker_csv(file_path)
 

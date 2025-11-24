@@ -12,8 +12,8 @@ from augustus_annotation import annotate_file_path
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
 
-def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accession,
-                            seq, start, end, orientation, output_path):
+def extract_allele_sequence(genome_assembly_path, genome_accession,
+                            seq, start, end, orientation, output_file):
     """
     Extract the sequence of specific position of a genome assembly
     :param assembly_dir:
@@ -43,15 +43,9 @@ def extract_allele_sequence(genome_assembly_path, candidate_gene, genome_accessi
     if orientation.lower() == "reverse":
         target_seq = target_seq.reverse_complement()
 
-    # output path
-    output_dir = os.path.join(output_path, candidate_gene)
-    os.makedirs(output_dir, exist_ok=True)
-
-    output_file = os.path.join(output_dir, f"{candidate_gene}_{genome_accession}_{seq}-{start}-{end}.fa")
-
-    # 4. save results
+    # save results
     with open(output_file, "w") as f:
-        f.write(f">{genome_accession}_{seq}:{start}-{end}\n")
+        f.write(f">{genome_accession}__{seq}__{start}-{end}\n")
         f.write(str(target_seq) + "\n")
 
     print(f"Sequence saved to {output_file}")
@@ -104,15 +98,20 @@ def extract_region_seq(allele_info, region_name, label, assembly_dir, output_pat
         # finding genome assembly path
         genome_assembly_path = find_genome_assembly_path(assembly_dir, genome)
 
+        output_dir = os.path.join(output_path, region_name)
+        os.makedirs(output_dir, exist_ok=True)
+
+        file_name = f"{region_name}__{genome}__{seq}__{start_read}-{end_read}__{label}"
+        output_file = os.path.join(output_dir, f"{file_name}.fa")
+
         extract_allele_sequence(
             genome_assembly_path,
             region_name,
-            f"{label}_{genome}",
             seq_info,
             start_read,
             end_read,
             orientation,
-            output_path
+            output_file
         )
 
     return True
@@ -178,31 +177,24 @@ def extract_reference_seq_augustus(candidate_data_summary, reference_genome, gff
         annotation_end = annotation_info[-1]["end"]
         end = min(end_ref + extend, annotation_end)
 
-        # extract the sequence from the reference genome
+        output_dir = os.path.join(output_path, region_name)
+        os.makedirs(output_dir, exist_ok=True)
+        label = "ref_seq_Augustus"
+        file_name = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}__{label}"
+
+        output_file = os.path.join(output_dir, f"{file_name}.fa")
         extract_allele_sequence(
             ref_assembly,
             region_name,
-            f"ref_seq_Augustus_{reference_genome}",
             seq_info_ref,
             start,
             end,
             "forward",
-            output_path
+            output_file
         )
 
-def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_path, output_path, extend,
+def extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend,
                              ref_assembly):
-    """
-
-    :param candidate_data_summary:
-    :param reference_genome:
-    :param annotation_sorted: {seq_ID: [row_dict, ...]}
-    :param output_path:
-    :return:
-    """
-    # load annotation
-    annotation_sorted = read_gff(gff_path)
-
     for summary in candidate_data_summary:
         region_name = summary["region_name"]
         up_down_locations = summary["position_info"]
@@ -221,21 +213,22 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
         end = min(end_ref + extend, annotation_end)
 
         # rename
-        genome_accession = f"ref_RefSeq_annotation_{reference_genome}"
+        output_dir = os.path.join(output_path, region_name)
+        os.makedirs(output_dir, exist_ok=True)
 
-        # extract the sequence from the reference genome
+        label = "ref_RefSeq"
+        file_name = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}__{label}"
+
+        output_file_fa = os.path.join(output_dir,f"{file_name}.fa")
         extract_allele_sequence(
             ref_assembly,
             region_name,
-            genome_accession,
             seq_info_ref,
             start,
             end,
             "forward",
-            output_path
+            output_file_fa
         )
-
-        seq_name = f"{genome_accession}_{seq_info_ref}:{start}-{end}"
 
         # --- Read and filter GFF annotations ---
         # annotation_sorted {seq_ID: [row_dict, ...]}
@@ -252,13 +245,11 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
 
         # create output path for gff3 file
         #output_dir = os.path.join(output_path, region_name, "reference_annotation")
-        output_dir = os.path.join(output_path, region_name)
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = f"{output_dir}/{region_name}_{genome_accession}_{seq_info_ref}-{start}-{end}.gff3"
+        output_file_gff3 = f"{output_dir}/{file_name}.gff3"
 
         # write in gff3 formate file
-        with open(output_file, "w", encoding="utf-8", newline="") as out:
-            out.write(f"##gff-version 3 {seq_name}\n")
+        with open(output_file_gff3, "w", encoding="utf-8", newline="") as out:
+            out.write(f"##gff-version 3 {file_name}\n")
 
             writer = csv.writer(out, delimiter="\t", lineterminator="\n")
 
@@ -268,7 +259,7 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
                 if type_ann == "mRNA":
                     type_ann = "transcript"
 
-                seq_ID = seq_name
+                seq_ID = file_name
                 source = ann.get("source", ".")
                 start = str(ann.get("start", "."))
                 end = str(ann.get("end", "."))
@@ -280,7 +271,26 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
                 # write in file
                 writer.writerow([seq_ID, source, type_ann, start, end, score, strand, phase, attributes])
 
-        print(f"GFF3 file successfully saved: {output_file}")
+        print(f"GFF3 file successfully saved: {output_file_gff3}")
+
+
+
+def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_path, output_path, extend,
+                             ref_assembly):
+    """
+
+    :param candidate_data_summary:
+    :param reference_genome:
+    :param annotation_sorted: {seq_ID: [row_dict, ...]}
+    :param output_path:
+    :return:
+    """
+    # load annotation
+    annotation_sorted = read_gff(gff_path)
+
+    extract_reference_allele(candidate_data_summary, reference_genome,
+                             annotation_sorted, output_path, extend,
+                             ref_assembly)
 
 def extract_reference_allele_augustus(candidate_data_summary, reference_genome, gff_path_augustus, output_path, extend,
                              ref_assembly):
@@ -295,84 +305,9 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
     # load annotation
     annotation_sorted_augustus = read_gff_augustus(gff_path_augustus)
 
-    for summary in candidate_data_summary:
-        region_name = summary["region_name"]
-        up_down_locations = summary["position_info"]
-
-        seq_info_ref = up_down_locations["position"]["seq_ID"]
-        start_ref = up_down_locations["upstream_position"][0]["start"]
-        end_ref = up_down_locations["downstream_position"][-1]["end"]
-
-        # calculate the start and end position of the extraction region
-        # start position
-        start = max(1, start_ref - extend)
-
-        # end position
-        annotation_info = annotation_sorted_augustus[seq_info_ref]
-        annotation_end = annotation_info[-1]["end"]
-        end = min(end_ref + extend, annotation_end)
-
-        # rename
-        genome_accession = f"ref_augustus_annotation_{reference_genome}"
-
-        # extract the sequence from the reference genome
-        extract_allele_sequence(
-            ref_assembly,
-            region_name,
-            genome_accession,
-            seq_info_ref,
-            start,
-            end,
-            "forward",
-            output_path
-        )
-
-        seq_name = f"{genome_accession}_{seq_info_ref}:{start}-{end}"
-
-        # --- Read and filter GFF annotations ---
-        # annotation_sorted {seq_ID: [row_dict, ...]}
-        extract_annotation = []
-        for annotation in annotation_info:
-            start_anno = annotation["start"]
-            end_anno = annotation["end"]
-
-            if start_anno >= start and end_anno <= end:
-                annotation_new = annotation.copy()
-                annotation_new["start"] = annotation["start"] - start + 1
-                annotation_new["end"] = annotation["end"] - start + 1
-                extract_annotation.append(annotation_new)
-
-        # create output path for gff3 file
-        #output_dir = os.path.join(output_path, region_name, "reference_annotation")
-        output_dir = os.path.join(output_path, region_name)
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = f"{output_dir}/{region_name}_{genome_accession}_{seq_info_ref}-{start}-{end}.gff3"
-
-        # write in gff3 formate file
-        with open(output_file, "w", encoding="utf-8", newline="") as out:
-            out.write(f"##gff-version 3 {seq_name}\n")
-
-            writer = csv.writer(out, delimiter="\t", lineterminator="\n")
-
-            for ann in extract_annotation:
-                type_ann = ann.get("type", ".")
-
-                if type_ann == "mRNA":
-                    type_ann = "transcript"
-
-                seq_ID = seq_name
-                source = ann.get("source", ".")
-                start = str(ann.get("start", "."))
-                end = str(ann.get("end", "."))
-                score = ann.get("score", ".")
-                strand = ann.get("strand", ".")
-                phase = ann.get("phase", ".")
-                attributes = ann.get("attributes", ".")
-
-                # write in file
-                writer.writerow([seq_ID, source, type_ann, start, end, score, strand, phase, attributes])
-
-        print(f"GFF3 file successfully saved: {output_file}")
+    extract_reference_allele(candidate_data_summary, reference_genome,
+                             annotation_sorted_augustus, output_path, extend,
+                             ref_assembly)
 
 def find_reference_gene(annotation_sorted, seq, start, end, CDS_dict):
 
