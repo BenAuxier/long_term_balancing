@@ -1,33 +1,41 @@
 import pandas as pd
 
-data = []
-current_title = None
 
-with open("your_file.txt", "r") as f:
-    for line in f:
-        line = line.strip()
 
-        # 标题行（以 "vs" 识别）
-        if " vs " in line:
-            current_title = line
-            continue
+def load_clinker_csv(file_path):
+    data = []
+    current_title = None
+    with open("your_file.txt", "r") as f:
+        for line in f:
+            line = line.strip()
 
-        # 跳过分隔线和空行
-        if not line or line.startswith("-") or line.startswith("Query"):
-            continue
+            # Title row (identified by “vs”)
+            if " vs " in line:
+                current_title = line
+                continue
 
-        # 解析表格行
-        parts = line.split()
-        if len(parts) == 4:
-            query, target, identity, similarity = parts
-            data.append({
-                "Comparison": current_title,
-                "Query": query,
-                "Target": target,
-                "Identity": float(identity),
-                "Similarity": float(similarity)
-            })
+            # Skip separator lines and blank lines
+            if not line or line.startswith("-") or line.startswith("Query"):
+                continue
 
-# 转为 DataFrame
-df = pd.DataFrame(data)
-print(df)
+            # Parsing table rows
+            parts = line.split()
+            if len(parts) == 4:
+                query, target, identity, similarity = parts
+                data.append({
+                    "Comparison": current_title,
+                    "Query": query,
+                    "Target": target,
+                    "Identity": float(identity),
+                    "Similarity": float(similarity)
+                })
+
+    df = pd.DataFrame(data)
+    print(df)
+
+if __name__ == "__main__":
+    # Convert to DataFrame
+    # data of MAT1-2-4
+    file_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results/clinker_results/data/g3347.t1-g3348.t1.csv"
+    load_clinker_csv(file_path)
+
