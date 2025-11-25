@@ -12,7 +12,7 @@ from augustus_annotation import annotate_file_path
 #############################################################
 # extract the sequence of the allele genomic region for each genes.
 
-def extract_allele_sequence(genome_assembly_path, genome_accession,
+def extract_allele_sequence(genome_assembly_path, genome_accession, region_name,
                             seq, start, end, orientation, output_file):
     """
     Extract the sequence of specific position of a genome assembly
@@ -43,9 +43,11 @@ def extract_allele_sequence(genome_assembly_path, genome_accession,
     if orientation.lower() == "reverse":
         target_seq = target_seq.reverse_complement()
 
+    sequence_name = f"{region_name}__{genome_accession}__{seq}__{start}-{end}"
+
     # save results
     with open(output_file, "w") as f:
-        f.write(f">{genome_accession}__{seq}__{start}-{end}\n")
+        f.write(f">{sequence_name}\n")
         f.write(str(target_seq) + "\n")
 
     print(f"Sequence saved to {output_file}")
@@ -106,6 +108,7 @@ def extract_region_seq(allele_info, region_name, label, assembly_dir, output_pat
 
         extract_allele_sequence(
             genome_assembly_path,
+            genome,
             region_name,
             seq_info,
             start_read,
@@ -185,6 +188,7 @@ def extract_reference_seq_augustus(candidate_data_summary, reference_genome, gff
         output_file = os.path.join(output_dir, f"{file_name}.fa")
         extract_allele_sequence(
             ref_assembly,
+            reference_genome,
             region_name,
             seq_info_ref,
             start,
@@ -222,6 +226,7 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         output_file_fa = os.path.join(output_dir,f"{file_name}.fa")
         extract_allele_sequence(
             ref_assembly,
+            reference_genome,
             region_name,
             seq_info_ref,
             start,
@@ -259,7 +264,8 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
                 if type_ann == "mRNA":
                     type_ann = "transcript"
 
-                seq_ID = file_name
+                # seq name should be same as the name in fasta file title
+                seq_ID = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}"
                 source = ann.get("source", ".")
                 start = str(ann.get("start", "."))
                 end = str(ann.get("end", "."))
