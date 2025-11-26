@@ -12,11 +12,25 @@ def load_clinker_csv(file_path):
             # Title row (identified by “vs”)
             if " vs " in line:
                 current_title = line.split("vs")
+                quary_sequence = current_title[0].strip().split("__")
+                region_name = quary_sequence[0]
+                region_gene = region_name.split("-")
+                if len(region_gene) == 1:
+                    upstream_gene = region_gene[0]
+                    downstream_gene = region_gene[0]
+                elif len(region_gene) == 2:
+                    upstream_gene = region_gene[0]
+                    downstream_gene = region_gene[1]
 
-                quary_sequence = current_title[0].strip()
+                query_genome = quary_sequence[1]
+                query_seq = quary_sequence[2]
+                query_start = quary_sequence[3]
+                query_end = quary_sequence[4]
+                query_label = quary_sequence[5]
+
                 target_sequence = current_title[1].strip()
 
-                print(quary_sequence, target_sequence)
+                print(quary_sequence)
 
                 continue
 
