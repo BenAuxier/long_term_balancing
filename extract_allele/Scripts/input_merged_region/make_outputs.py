@@ -182,7 +182,7 @@ def extract_reference_seq_augustus(candidate_data_summary, reference_genome, gff
 
         output_dir = os.path.join(output_path, region_name)
         os.makedirs(output_dir, exist_ok=True)
-        label = "ref_seq_Augustus"
+        label = "re-annotate_AUGUSTUS"
         file_name = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}__{label}"
 
         output_file = os.path.join(output_dir, f"{file_name}.fa")
@@ -198,7 +198,7 @@ def extract_reference_seq_augustus(candidate_data_summary, reference_genome, gff
         )
 
 def extract_reference_allele(candidate_data_summary, reference_genome, annotation_sorted, output_path, extend,
-                             ref_assembly):
+                             ref_assembly, label):
     for summary in candidate_data_summary:
         region_name = summary["region_name"]
         up_down_locations = summary["position_info"]
@@ -220,7 +220,6 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
         output_dir = os.path.join(output_path, region_name)
         os.makedirs(output_dir, exist_ok=True)
 
-        label = "ref_RefSeq"
         file_name = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}__{label}"
 
         output_file_fa = os.path.join(output_dir,f"{file_name}.fa")
@@ -267,15 +266,15 @@ def extract_reference_allele(candidate_data_summary, reference_genome, annotatio
                 # seq name should be same as the name in fasta file title
                 seq_ID = f"{region_name}__{reference_genome}__{seq_info_ref}__{start}-{end}"
                 source = ann.get("source", ".")
-                start = str(ann.get("start", "."))
-                end = str(ann.get("end", "."))
+                start_anno = str(ann.get("start", "."))
+                end_anno = str(ann.get("end", "."))
                 score = ann.get("score", ".")
                 strand = ann.get("strand", ".")
                 phase = ann.get("phase", ".")
                 attributes = ann.get("attributes", ".")
 
                 # write in file
-                writer.writerow([seq_ID, source, type_ann, start, end, score, strand, phase, attributes])
+                writer.writerow([seq_ID, source, type_ann, start_anno, end_anno, score, strand, phase, attributes])
 
         print(f"GFF3 file successfully saved: {output_file_gff3}")
 
@@ -294,9 +293,11 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
     # load annotation
     annotation_sorted = read_gff(gff_path)
 
+    label = "ref_RefSeq"
+
     extract_reference_allele(candidate_data_summary, reference_genome,
                              annotation_sorted, output_path, extend,
-                             ref_assembly)
+                             ref_assembly, label)
 
 def extract_reference_allele_augustus(candidate_data_summary, reference_genome, gff_path_augustus, output_path, extend,
                              ref_assembly):
@@ -311,9 +312,11 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
     # load annotation
     annotation_sorted_augustus = read_gff_augustus(gff_path_augustus)
 
+    label = "ref_AUGUSTUS"
+
     extract_reference_allele(candidate_data_summary, reference_genome,
                              annotation_sorted_augustus, output_path, extend,
-                             ref_assembly)
+                             ref_assembly, label)
 
 def find_reference_gene(annotation_sorted, seq, start, end, CDS_dict):
 

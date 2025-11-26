@@ -1,6 +1,5 @@
 import pandas as pd
-
-
+import os
 
 def load_clinker_csv(file_path, output_path):
     data = []
@@ -29,6 +28,7 @@ def load_clinker_csv(file_path, output_path):
                 query_label = query_sequence[4]
 
                 target_sequence = current_title[1].strip().split("__")
+                print(target_sequence)
                 target_genome = target_sequence[1]
                 target_seq = target_sequence[2]
                 target_pos = target_sequence[3]
@@ -58,10 +58,27 @@ def load_clinker_csv(file_path, output_path):
                     "Identity": float(identity),
                     "Similarity": float(similarity)
                 })
-
+    print(data)
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     print(f"csv saved to {output_path}")
+
+def transform_clinker_results(input_path, output_path):
+
+    os.makedirs(output_path, exist_ok=True)
+
+    for txt_file in os.listdir(input_path):
+        if txt_file.endswith(".txt"):
+            txt_file_path = os.path.join(input_path, txt_file)
+            if not os.path.isdir(txt_file_path):
+                continue
+            output_file_name = f"{txt_file.split(".")[0]}.csv"
+            output_file_path = os.path.join(output_path, output_file_name)
+            load_clinker_csv(txt_file_path, output_file_path)
+    print(f"transform complete, files are saved to {output_path}")
+
+
+
 
 if __name__ == "__main__":
     # Convert to DataFrame
@@ -69,5 +86,9 @@ if __name__ == "__main__":
     result_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results"
     file_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_data.csv"
     output_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_reload.csv"
-    load_clinker_csv(file_path, output_path)
+    #load_clinker_csv(file_path, output_path)
+
+    input_path = f"{result_path}/clinker_comparasion"
+    output_path = f"{result_path}/clinker_comparasion/reload_data"
+    transform_clinker_results(input_path, output_path)
 
