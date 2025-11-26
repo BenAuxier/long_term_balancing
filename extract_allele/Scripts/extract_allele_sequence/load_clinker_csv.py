@@ -2,7 +2,7 @@ import pandas as pd
 
 
 
-def load_clinker_csv(file_path):
+def load_clinker_csv(file_path, output_path):
     data = []
     current_title = None
     with open(file_path, "r") as f:
@@ -11,9 +11,10 @@ def load_clinker_csv(file_path):
 
             # Title row (identified by “vs”)
             if " vs " in line:
-                current_title = line.split("vs")
-                quary_sequence = current_title[0].strip().split("__")
-                region_name = quary_sequence[0]
+                current_title = line.split("vs") # g3347.t1-g3348.t1__GCA_020501325.1__JAIBUL010000135.1__1-31369__ref_allele
+
+                query_sequence = current_title[0].strip().split("__")
+                region_name = query_sequence[0]
                 region_gene = region_name.split("-")
                 if len(region_gene) == 1:
                     upstream_gene = region_gene[0]
@@ -22,15 +23,16 @@ def load_clinker_csv(file_path):
                     upstream_gene = region_gene[0]
                     downstream_gene = region_gene[1]
 
-                query_genome = quary_sequence[1]
-                query_seq = quary_sequence[2]
-                query_start = quary_sequence[3]
-                query_end = quary_sequence[4]
-                query_label = quary_sequence[5]
+                query_genome = query_sequence[1]
+                query_seq = query_sequence[2]
+                query_pos = query_sequence[3]
+                query_label = query_sequence[4]
 
-                target_sequence = current_title[1].strip()
-
-                print(quary_sequence)
+                target_sequence = current_title[1].strip().split("__")
+                target_genome = target_sequence[1]
+                target_seq = target_sequence[2]
+                target_pos = target_sequence[3]
+                target_label = target_sequence[4]
 
                 continue
 
@@ -44,19 +46,28 @@ def load_clinker_csv(file_path):
                 query, target, identity, similarity = parts
                 data.append({
                     "Comparison": current_title,
-                    "Query": query,
-                    "Target": target,
+                    "Genomic_region": region_name,
+                    "Upstream_gene": upstream_gene,
+                    "Downstream_gene": downstream_gene,
+                    "Query_genome": query_genome,
+                    "Query_label": query_label,
+                    "Target_genome": target_genome,
+                    "Target_label": target_label,
+                    "Query_gene": query,
+                    "Target_gene": target,
                     "Identity": float(identity),
                     "Similarity": float(similarity)
                 })
 
     df = pd.DataFrame(data)
-    #print(df)
+    df.to_csv(output_path, index=False)
+    print(f"csv saved to {output_path}")
 
 if __name__ == "__main__":
     # Convert to DataFrame
     # data of MAT1-2-4
     result_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results"
     file_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_data.csv"
-    load_clinker_csv(file_path)
+    output_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_reload.csv"
+    load_clinker_csv(file_path, output_path)
 
