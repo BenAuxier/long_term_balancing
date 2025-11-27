@@ -80,8 +80,21 @@ def transform_clinker_results(input_path, output_path):
 
     print(f"transform complete, files are saved to {output_path}")
 
+def read_transform_data(input_data):
+    df = pd.read_csv(input_data)
+
+
+
+
+
+
+
+
+
+
 
 def analyze_clinker_results(input_path, output_path):
+    return True
 
 
 
