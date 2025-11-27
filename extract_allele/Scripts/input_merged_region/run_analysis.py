@@ -71,7 +71,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     minimal_length = 100 # the minimal length of the genomic region merged in "calculate_depth_all"
     base_interval = "2" # the interval between merged base
 
-    similarity_visualization = "30"
+    similarity_visualization = "0.3"
 
     ##########################################################################
 
@@ -130,7 +130,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     # run clinker for comparasion data
     clinker_data_path = f"{results_path}/clinker_comparasion"
-    run_clinker_data(sequence_path, clinker_data_path, "1")
+    run_clinker_data(sequence_path, clinker_data_path, "0.01")
 
 
     """

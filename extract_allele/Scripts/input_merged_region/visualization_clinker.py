@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-def run_clinker_visualization(sequence_path, clinker_output_path, minimal_similarity = "30"):
+def run_clinker_visualization(sequence_path, clinker_output_path, minimal_similarity = "0.3"):
     """
     Batch run Clinker on all subdirectories containing multiple valid GFF3 files.
 
