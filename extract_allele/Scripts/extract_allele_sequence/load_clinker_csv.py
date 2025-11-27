@@ -44,7 +44,7 @@ def load_clinker_csv(file_path, output_path):
             parts = line.split()
             if len(parts) == 4:
                 query, target, identity, similarity = parts
-                data.append({
+                info = {
                     "Comparison": current_title,
                     "Genomic_region": region_name,
                     "Upstream_gene": upstream_gene,
@@ -57,7 +57,27 @@ def load_clinker_csv(file_path, output_path):
                     "Target_gene": target,
                     "Identity": float(identity),
                     "Similarity": float(similarity)
-                })
+                }
+
+                data.append(info)
+
+                # reverse the order of query and target data
+                info_reverse = {
+                    "Comparison": current_title,
+                    "Genomic_region": region_name,
+                    "Upstream_gene": upstream_gene,
+                    "Downstream_gene": downstream_gene,
+                    "Query_genome": target_genome,
+                    "Query_label": target_label,
+                    "Target_genome": query_genome,
+                    "Target_label": query_label,
+                    "Query_gene": target,
+                    "Target_gene": query,
+                    "Identity": float(identity),
+                    "Similarity": float(similarity)
+                }
+
+                data.append(info_reverse)
     print(data)
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
@@ -82,6 +102,7 @@ def transform_clinker_results(input_path, output_path):
 
 def read_transform_data(input_data):
     df = pd.read_csv(input_data)
+    return df
 
 
 
@@ -93,7 +114,25 @@ def read_transform_data(input_data):
 
 
 
-def analyze_clinker_results(input_path, output_path):
+def analyze_clinker_results(input_data):
+    df = read_transform_data(input_data)
+
+    # read the up and down-stream candidate genes
+    upstream_gene = df.loc[0, "Upstream_gene"]
+    downstream_gene = df.loc[0, "Downstream_gene"]
+
+    # all data between reference genome vs. reference and divergent allele
+    df_ref_data = df[
+        (df["Query_label"] == "ref_AUGUSTUS") &
+        (df["Target_label"].isin(["ref_allele", "diff_allele"]))
+        ]
+
+    df_ref_ref = df_ref_data[df_ref_data["Target_label"] == "ref_allele"]
+    df_ref_divergent = df_ref_data[df_ref_data["Target_label"] == "diff_allele"]
+
+
+    print(df_ref_ref)
+
     return True
 
 
@@ -104,9 +143,12 @@ if __name__ == "__main__":
     result_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/results"
     file_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_data.csv"
     output_path = f"{result_path}/clinker_results/data/g3347.t1-g3348.t1_reload.csv"
-    df = load_clinker_csv(file_path, output_path)
+    #df = load_clinker_csv(file_path, output_path)
 
     input_path = f"{result_path}/clinker_comparasion"
     output_path = f"{result_path}/clinker_comparasion/transformed_data"
     transform_clinker_results(input_path, output_path)
+
+    input_data = f"{result_path}/clinker_comparasion/transformed_data/g3347.t1-g3348.t1_data_transformed.csv"
+    analyze_clinker_results(input_data)
 
