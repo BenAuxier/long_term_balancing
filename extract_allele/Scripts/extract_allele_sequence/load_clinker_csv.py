@@ -78,7 +78,7 @@ def load_clinker_csv(file_path, output_path):
                 }
 
                 data.append(info_reverse)
-    print(data)
+    #print(data)
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     print(f"csv saved to {output_path}")
@@ -93,7 +93,7 @@ def transform_clinker_results(input_path, output_path):
             txt_file_path = os.path.join(input_path, txt_file)
             output_file_name = f"{txt_file[:-4]}_transformed.csv"
             output_file_path = os.path.join(output_path, output_file_name)
-            print(txt_file_path, output_file_path)
+            #print(txt_file_path, output_file_path)
 
             gene_data = load_clinker_csv(txt_file_path, output_file_path)
 
@@ -105,13 +105,32 @@ def read_transform_data(input_data):
     return df
 
 
+def count_similar_genes(df, query_gene, high_similarity_threshold):
+    # query a gene in df, count the number of assemblies that have a high similarity gene
 
+    df_gene = df[df["Query_gene"].str.contains(query_gene, na=False)]
 
+    for index, row in df_gene.iterrows():
+        #print(index, row)
+        continue
 
+    assemblies = df_gene["Target_genome"].unique()
 
+    similar_genes = []
+    for target_assembly in assemblies:
+        df_target = df_gene[df_gene["Target_genome"] == target_assembly]
 
+        max_row = df_target.loc[df_target["Identity"].idxmax()]
 
+        max_identity = max_row["Identity"]
+        max_gene = max_row["Target_gene"]
+        #print(max_identity, max_gene)
 
+        if max_identity >= high_similarity_threshold:
+            similar_genes.append({target_assembly: max_gene})
+    print(similar_genes)
+
+    return similar_genes
 
 
 def analyze_clinker_results(input_data):
@@ -122,16 +141,41 @@ def analyze_clinker_results(input_data):
     downstream_gene = df.loc[0, "Downstream_gene"]
 
     # all data between reference genome vs. reference and divergent allele
+    # only select the data when query sequence is ref_AUGUSTUS
     df_ref_data = df[
         (df["Query_label"] == "ref_AUGUSTUS") &
         (df["Target_label"].isin(["ref_allele", "diff_allele"]))
         ]
 
+    #extract the data for ref and divergent allele separately
     df_ref_ref = df_ref_data[df_ref_data["Target_label"] == "ref_allele"]
-    df_ref_divergent = df_ref_data[df_ref_data["Target_label"] == "diff_allele"]
+    df_ref_diver = df_ref_data[df_ref_data["Target_label"] == "diff_allele"]
+
+    # number of ref and diff assemblies
+    num_ref_assemblies = len(df_ref_ref["Target_genome"].unique())
+    num_diver_assemblies = len(df_ref_diver["Target_genome"].unique())
+    num_all_assemblies = num_ref_assemblies + num_diver_assemblies
+
+    high_similarity_threshold = 0.85
+    low_similarity_threshold = 0.6
+
+    query_gene = upstream_gene.split(".")[0]
+
+    # check whether the candidate gene have high similarity with ref genes and low similarity with diff
+    """similar_genes_ref = count_similar_genes(df_ref_ref, query_gene, high_similarity_threshold)
+    num_ref = len(similar_genes_ref)
+    ratio_ref = num_ref / num_ref_assemblies
+
+    similar_genes_diff = count_similar_genes(df_ref_diver, query_gene, high_similarity_threshold)
+    num_diff = len(similar_genes_diff)
+    ratio_diff = num_diff / num_ref_assemblies"""
+
+    similar_genes_ref = count_similar_genes(df_ref_ref, query_gene, high_similarity_threshold)
 
 
-    print(df_ref_ref)
+
+
+
 
     return True
 
@@ -147,8 +191,11 @@ if __name__ == "__main__":
 
     input_path = f"{result_path}/clinker_comparasion"
     output_path = f"{result_path}/clinker_comparasion/transformed_data"
-    transform_clinker_results(input_path, output_path)
+    #transform_clinker_results(input_path, output_path)
 
     input_data = f"{result_path}/clinker_comparasion/transformed_data/g3347.t1-g3348.t1_data_transformed.csv"
     analyze_clinker_results(input_data)
+
+
+
 
