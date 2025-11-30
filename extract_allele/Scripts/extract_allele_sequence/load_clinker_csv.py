@@ -1,5 +1,7 @@
 import pandas as pd
 import os
+import glob
+import csv
 
 def load_clinker_csv(file_path, output_path):
     data = []
@@ -189,7 +191,7 @@ def find_intermediate(df, assembly, up_ref_gene, down_ref_gene):
     return inter_gene
 
 
-def analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, ratio_threhold, high_similarity_threshold):
+def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, ratio_threhold, high_similarity_threshold):
     # finding the assmeblies and genes to extract genes in between
 
     up_genes_ref, up_genes_diver = search_ref_gene(upstream_gene, df_ref_ref, df_ref_diver, "upstream",
@@ -205,11 +207,12 @@ def analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, r
         inter_gene_ref = find_intermediate(df_ref_ref, assembly, up_gene, down_gene)
 
         case_info_ref = {
+            "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "ref_allele",
             #"up_ref_gene": up_gene,
             #"down_ref_gene": down_gene,
-            "inter_gene_ref": inter_gene_ref
+            "included_genes": inter_gene_ref
         }
         extraction_info.append(case_info_ref)
 
@@ -221,19 +224,98 @@ def analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, r
         inter_gene_diver = find_intermediate(df_ref_diver, assembly, up_gene, down_gene)
 
         case_info_diver = {
+            "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "diver_allele",
             #"up_diver_gene": up_gene,
             #"down_diver_gene": down_genes_diver[assembly],
-            "inter_gene_diver": inter_gene_diver
+            "included_genes": inter_gene_diver
         }
         extraction_info.append(case_info_diver)
 
     return extraction_info
 
 
+def find_genome_assembly_path(file_dir, genome, suffix):
+    # search for the file including genome accession in its name
+    assembly_pattern = os.path.join(file_dir, f"*{genome}*{suffix}")
+    matches = glob.glob(assembly_pattern)
+    if not matches:
+        warning = f"Warning: No genome assembly found for {genome}"
+        print(warning)
+        # return warning
+    genome_assembly_path = matches[0]
+    return genome_assembly_path
 
-def analyze_clinker_results(input_data):
+
+def extract_aminoacid(annotation_dir, gene_info, output_file):
+    """
+
+    :param gene_info: example, {'assembly_ID': 'GCA_018804105.1', 'assembly_label': 'diver_allele',
+    'inter_gene_diver': ['g7.t1.cds', 'g8.t1.cds']}
+    :return:
+    """
+    genomic_region = gene_info["genomic_region"]
+    assembly_id = gene_info["assembly_ID"]
+    assembly_label = gene_info["assembly_label"]
+    inter_gene_diver = gene_info["included_genes"]
+
+    candidate_genes = []
+    for gene_cds in inter_gene_diver:
+        gene = gene_cds.split(".")[0]
+        candidate_genes.extend([gene])
+
+    gff_path = find_genome_assembly_path(annotation_dir, assembly_id, ".gff3")
+
+    for gene in candidate_genes:
+        start_header = f"start gene {gene}"
+        end_header = f"end gene {gene}"
+        with open(gff_path, "r", encoding="utf-8-sig") as f:
+            in_target_gene = False
+            in_protein_seq = False
+            seq_lines = []
+
+            for line in f:
+                line = line.strip()
+                if not line.startswith("#"):
+                    continue  # skip annotation
+                # Identifying the start of the target gene
+                if start_header in line:
+                    in_target_gene = True
+                    continue
+                # Identifying the end of the target gene
+                if end_header in line:
+                    in_target_gene = False
+                    break  # finish
+
+                if in_target_gene:
+                    # Begin reading the protein sequence
+                    line = line.lstrip("# ").strip()
+                    if line.startswith("protein sequence = ["):
+                        in_protein_seq = True
+                        seq_line = line.split("[", 1)[1]  # remove
+                        seq_lines.append(seq_line)
+                        continue
+                    elif in_protein_seq:
+                        if line.endswith("]"):
+                            seq_lines.append(line.rstrip("]"))  # remove
+                            in_protein_seq = False
+                        else:
+                            seq_lines.append(line)
+
+            protein_seq = "".join(seq_lines).replace(" ", "").replace("\n", "")
+
+            print(protein_seq)
+
+            # Write to output file, FASTA format
+            with open(output_file, "a", encoding="utf-8-sig") as out:
+                out.write(f">{genomic_region}__{assembly_id}__{assembly_label}__{gene}\n")
+                # Line breaks every 60 characters for easy viewing.
+                for i in range(0, len(protein_seq), 60):
+                    out.write(protein_seq[i:i + 60] + "\n")
+
+
+def analyze_clinker_results(input_data, annotation_dir, output_file):
     df = read_transform_data(input_data)
 
     # read the up and down-stream candidate genes
@@ -272,25 +354,21 @@ def analyze_clinker_results(input_data):
     ratio_threhold = 0.6
 
     # find the gene that could be used as reference gene in reference genome
-    extraction_info = analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref,
+    info_extraction = analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
                      df_ref_diver, ratio_threhold, high_similarity_threshold)
-    for info in extraction_info:
+    for info in info_extraction:
         print(info)
 
-    return extraction_info
+    # If the output file already exists, delete it
+    if os.path.exists(output_file):
+        os.remove(output_file)
+    # extract amino acid sequences
+    for gene_info in info_extraction:
+        extract_aminoacid(annotation_dir, gene_info, output_file)
 
-def annotate_gene(gene_info):
-    """
+    print("Protein sequence of candidate genomic region", genomic_region, "is saved to", output_file)
 
-    :param gene_info: example, {'assembly_ID': 'GCA_018804105.1', 'assembly_label': 'diver_allele',
-    'inter_gene_diver': ['g7.t1.cds', 'g8.t1.cds']}
-    :return:
-    """
-    assembly_id = gene_info["assembly_ID"]
-    assembly_label = gene_info["assembly_label"]
-    inter_gene_diver = gene_info["inter_gene_diver"]
-
-
+    return info_extraction
 
 
 
@@ -306,8 +384,15 @@ if __name__ == "__main__":
     output_path = f"{result_path}/clinker_comparasion/transformed_data"
     #transform_clinker_results(input_path, output_path)
 
+    #analyze a single genomic region
     input_data = f"{result_path}/clinker_comparasion/transformed_data/g3347.t1-g3348.t1_data_transformed.csv"
-    analyze_clinker_results(input_data)
+    gff_dir = f"/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/extract_sequences/g3347.t1-g3348.t1"
+    output_extraction = f"{result_path}/clinker_comparison"
+    # Ensure the output directory exists
+    os.makedirs(output_extraction, exist_ok=True)
+    output_file = f"{output_extraction}/name.fasta"
+
+    analyze_clinker_results(input_data, gff_dir, output_file)
 
 
 
