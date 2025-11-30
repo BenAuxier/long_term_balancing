@@ -116,7 +116,7 @@ def count_similar_genes(df, query_gene, high_similarity_threshold):
 
     assemblies = df_gene["Target_genome"].unique()
 
-    similar_genes = []
+    similar_genes = {}
     for target_assembly in assemblies:
         df_target = df_gene[df_gene["Target_genome"] == target_assembly]
 
@@ -127,18 +127,119 @@ def count_similar_genes(df, query_gene, high_similarity_threshold):
         #print(max_identity, max_gene)
 
         if max_identity >= high_similarity_threshold:
-            similar_genes.append({target_assembly: max_gene})
-    print(similar_genes)
+            similar_genes[target_assembly] = max_gene
 
     return similar_genes
+
+def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_threhold, high_similarity_threshold):
+    # Finding the reference gene that have high similarity with ref and diff assemblies.
+    local_genes = df_ref_ref["Query_gene"].unique()
+
+    if orientation == "upstream":
+        query_genes_sorted = sorted(local_genes, reverse=True)
+    elif orientation == "downstream":
+        query_genes_sorted = sorted(local_genes, reverse=False)
+
+    for i in range(len(query_genes_sorted)):
+        gene = query_genes_sorted[i]
+        if query_gene in gene:
+            break
+    candidate_ref_genes = query_genes_sorted[i+1:]
+
+    num_ref_assemblies = len(df_ref_ref["Target_genome"].unique())
+    num_diver_assemblies = len(df_ref_diver["Target_genome"].unique())
+
+    round = 0
+    for candidate_gene in candidate_ref_genes:
+        round += 1
+        if round > 4:
+            break
+        similar_genes_ref = count_similar_genes(df_ref_ref, candidate_gene, high_similarity_threshold)
+        num_ref_genes = len(similar_genes_ref)
+        ref_ratio = num_ref_genes / num_ref_assemblies
+
+        similar_genes_diver = count_similar_genes(df_ref_diver, candidate_gene, high_similarity_threshold)
+        num_diver_genes = len(similar_genes_diver)
+        diver_ratio = num_diver_genes / num_diver_assemblies
+
+        if ref_ratio >= ratio_threhold and diver_ratio >= ratio_threhold:
+            # return similar up and down stream genes
+            return similar_genes_ref, similar_genes_diver
+        else:
+            continue
+
+    return False, False
+
+def find_intermediate(df, assembly, up_ref_gene, down_ref_gene):
+
+    # select the data of this genome assembly
+    df_selected = df[df["Target_genome"] == assembly]
+    local_genes = df_selected["Target_gene"].unique()
+    query_genes_sorted = sorted(local_genes, reverse=False)
+    inter_gene = []
+    for i in range(len(query_genes_sorted)):
+        gene = query_genes_sorted[i]
+        if gene == up_ref_gene:
+            start_pos = i+1
+        if gene == down_ref_gene:
+            end_pos = i
+    if start_pos and end_pos:
+        inter_gene = query_genes_sorted[start_pos:end_pos]
+
+    return inter_gene
+
+
+def analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, ratio_threhold, high_similarity_threshold):
+    # finding the assmeblies and genes to extract genes in between
+
+    up_genes_ref, up_genes_diver = search_ref_gene(upstream_gene, df_ref_ref, df_ref_diver, "upstream",
+                                                                ratio_threhold, high_similarity_threshold)
+    down_genes_ref, down_genes_diver = search_ref_gene(downstream_gene, df_ref_ref, df_ref_diver,"downstream",
+                                                                      ratio_threhold, high_similarity_threshold)
+    extraction_info = []
+    for up_assembly, up_gene in up_genes_ref.items():
+        if up_assembly not in down_genes_ref.keys():
+            continue
+        assembly = up_assembly
+        down_gene = down_genes_ref[assembly]
+        inter_gene_ref = find_intermediate(df_ref_ref, assembly, up_gene, down_gene)
+
+        case_info_ref = {
+            "assembly_ID": assembly,
+            "assembly_label": "ref_allele",
+            #"up_ref_gene": up_gene,
+            #"down_ref_gene": down_gene,
+            "inter_gene_ref": inter_gene_ref
+        }
+        extraction_info.append(case_info_ref)
+
+    for up_assembly, up_gene in up_genes_diver.items():
+        if up_assembly not in down_genes_diver.keys():
+            continue
+        assembly = up_assembly
+        down_gene = down_genes_diver[assembly]
+        inter_gene_diver = find_intermediate(df_ref_diver, assembly, up_gene, down_gene)
+
+        case_info_diver = {
+            "assembly_ID": assembly,
+            "assembly_label": "diver_allele",
+            #"up_diver_gene": up_gene,
+            #"down_diver_gene": down_genes_diver[assembly],
+            "inter_gene_diver": inter_gene_diver
+        }
+        extraction_info.append(case_info_diver)
+
+    return extraction_info
+
 
 
 def analyze_clinker_results(input_data):
     df = read_transform_data(input_data)
 
     # read the up and down-stream candidate genes
-    upstream_gene = df.loc[0, "Upstream_gene"]
-    downstream_gene = df.loc[0, "Downstream_gene"]
+    genomic_region = df.loc[0, "Genomic_region"]
+    upstream_gene = df.loc[0, "Upstream_gene"].split(".")[0]
+    downstream_gene = df.loc[0, "Downstream_gene"].split(".")[0]
 
     # all data between reference genome vs. reference and divergent allele
     # only select the data when query sequence is ref_AUGUSTUS
@@ -161,23 +262,35 @@ def analyze_clinker_results(input_data):
 
     query_gene = upstream_gene.split(".")[0]
 
-    # check whether the candidate gene have high similarity with ref genes and low similarity with diff
+    # check whether the candidate gene have high similarity with ref alleles
+    # and low similarity with divergent alleles
     """similar_genes_ref = count_similar_genes(df_ref_ref, query_gene, high_similarity_threshold)
-    num_ref = len(similar_genes_ref)
-    ratio_ref = num_ref / num_ref_assemblies
+    num_ref = len(similar_genes_ref.keys())
+    ratio_ref = num_ref / num_ref_assemblies"""
 
-    similar_genes_diff = count_similar_genes(df_ref_diver, query_gene, high_similarity_threshold)
-    num_diff = len(similar_genes_diff)
-    ratio_diff = num_diff / num_ref_assemblies"""
+    # query the upstream reference gene.
+    ratio_threhold = 0.6
 
-    similar_genes_ref = count_similar_genes(df_ref_ref, query_gene, high_similarity_threshold)
+    # find the gene that could be used as reference gene in reference genome
+    extraction_info = analyze_ref_gene(upstream_gene, downstream_gene, df_ref_ref,
+                     df_ref_diver, ratio_threhold, high_similarity_threshold)
+    for info in extraction_info:
+        print(info)
+
+    return extraction_info
+
+def annotate_gene(gene_info):
+    """
+
+    :param gene_info: example, {'assembly_ID': 'GCA_018804105.1', 'assembly_label': 'diver_allele',
+    'inter_gene_diver': ['g7.t1.cds', 'g8.t1.cds']}
+    :return:
+    """
+    assembly_id = gene_info["assembly_ID"]
+    assembly_label = gene_info["assembly_label"]
+    inter_gene_diver = gene_info["inter_gene_diver"]
 
 
-
-
-
-
-    return True
 
 
 
