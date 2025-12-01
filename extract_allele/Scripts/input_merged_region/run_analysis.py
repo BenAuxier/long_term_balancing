@@ -101,7 +101,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
                                                                annotation_sorted_dict_augustus, minimal_length)
 
     #test
-    candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
+    #candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
 
     print("analyzing candidate data")
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,
@@ -128,8 +128,8 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     clinker_output_path = f"{results_path}/clinker_results"
     run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
 
-    # run clinker for comparasion data
-    clinker_data_path = f"{results_path}/clinker_comparasion"
+    # run clinker for comparison data
+    clinker_data_path = f"{results_path}/clinker_comparison"
     run_clinker_data(sequence_path, clinker_data_path, "0.01")
 
 

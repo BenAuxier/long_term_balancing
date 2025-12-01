@@ -6,7 +6,50 @@ from Bio import SeqIO
 from load_reference import read_gff
 from load_reference import read_gff_augustus
 from analyze_position import random_select_assembly
-from augustus_annotation import annotate_file_path
+
+###############################################################
+# augustus_annotation
+def run_augustus_on_fasta(fa_path,augustus_species, gff3_status = "off", suffix = ""):
+    """
+    Run AUGUSTUS on a single FASTA file and save the output in GFF3 format.
+    """
+    base = os.path.splitext(os.path.basename(fa_path))[0]
+    dir_path = os.path.dirname(fa_path)
+
+    if gff3_status == "on":
+        output_path = os.path.join(dir_path, f"{base}{suffix}.gff3")
+    else:
+        output_path = os.path.join(dir_path, f"{base}{suffix}.gff")
+
+    print(f"Running AUGUSTUS on {fa_path} ...")
+
+    # Build command
+    cmd = [
+        "augustus",
+        f"--species={augustus_species}",
+        f"--gff3={gff3_status}",
+        fa_path
+    ]
+
+    # Run command and write output
+    with open(output_path, "w") as out_f:
+        subprocess.run(cmd, stdout=out_f, stderr=subprocess.PIPE, check=True)
+    return output_path
+
+def annotate_file_path(input_dir,augustus_species, gff3_status = "off"):
+    """
+    Recursively find all .fa files under INPUT_DIR and run AUGUSTUS for each.
+    """
+
+    for root, _, files in os.walk(input_dir):
+        for file in files:
+            if file.endswith(".fa"):
+                fa_path = os.path.join(root, file)
+                try:
+                    run_augustus_on_fasta(fa_path,augustus_species, gff3_status)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running AUGUSTUS on {fa_path}: {e}")
+    return True
 
 
 #############################################################
