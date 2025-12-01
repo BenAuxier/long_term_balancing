@@ -2,6 +2,7 @@
 Extract the allele of each gene in multiple genomes
 
 """
+import os
 from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import calculate_genome_number
 from prepare_alignment import extract_annotations
@@ -113,8 +114,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # save final candidate genes to an excel file
     print("saving candidate genes")
     results_path = f"{main_path}/results"
-    results_path = extract_candidates(candidate_data_summary, results_path, filtered_candidate_data,
-                       genome_num,annotation_sorted, species, CDS_dict)
+    os.makedirs(results_path, exist_ok=True)
+    result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
+    results_path = extract_candidates(candidate_data_summary, result_file, filtered_candidate_data,
+                       genome_num,annotation_sorted, CDS_dict)
 
 
     # extract sequences

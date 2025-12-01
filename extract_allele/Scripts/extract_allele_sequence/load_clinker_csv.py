@@ -535,43 +535,42 @@ def analyze_annotation(assembly, included_genes, interpro_dict):
 
     return domain_info, ipr_info, go_info
 
-def build_region_gene_dict(excel_file):
+def build_region_to_genes(excel_file):
     """
-    将 Excel 转换成结构:
+    return: dictionary
     {
-        genomic_region: {
-            id: [genes]
-        }
+        genomic_region: [RefSeq_genes included in this region, in gene ID]
     }
     """
-
     df = pd.read_excel(excel_file)
 
     result = {}
 
     for _, row in df.iterrows():
         region = str(row["genomic_region"]).strip()
-        gene_id = str(row["id"]).strip()
 
-        # 将字符串形式的 list 转为 Python list
+        # Convert the RefSeq_genes field
         genes = row["RefSeq_genes"]
         if isinstance(genes, str):
             try:
-                genes = ast.literal_eval(genes)  # 处理 ['A','B','C']
+                genes = ast.literal_eval(genes)
             except:
                 genes = []
         elif pd.isna(genes):
             genes = []
 
-        # 创建 region 子字典
+        # create key
         if region not in result:
-            result[region] = {}
+            result[region] = []
 
-        result[region][gene_id] = genes
+        # add gene
+        result[region].extend(genes)
+
+
 
     return result
 
-def output_annotation_results(candidate_dict, annotation_path, output_file):
+def output_annotation_results(candidate_dict, annotation_path, id_dict, output_file):
     """
 
     :param candidate_dict:
@@ -586,12 +585,29 @@ def output_annotation_results(candidate_dict, annotation_path, output_file):
         if not annotation_data.endswith(".tsv"):
             continue
         annotation_file = f"{annotation_path}/{annotation_data}"
-        interpro_data = load_interpro(annotation_file)
-        interpro_dict = interpro_data_dict(interpro_data)
-
         # load annotation
         genomic_region = annotation_data.split("_")[0]
         region_info = candidate_dict[genomic_region]
+
+        # load analysis results
+        interpro_data = load_interpro(annotation_file)
+        # if no prediction
+        if not interpro_data:
+            all_info = {
+                "genomic_region": genomic_region,
+                "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
+                "assembly_id": "",
+                "assembly_label": "",
+                "gene": "",
+                "domain_name": "unpredicted",
+                "ipr_name": "unpredicted",
+                "go_terms": "unpredicted"
+            }
+            annotation_files.append(all_info)
+            continue
+
+        interpro_dict = interpro_data_dict(interpro_data)
+
         for assembly, info in region_info.items():
 
             if assembly not in interpro_dict.keys():
@@ -605,6 +621,7 @@ def output_annotation_results(candidate_dict, annotation_path, output_file):
 
             all_info = {
                 "genomic_region": genomic_region,
+                "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
                 "assembly_id": assembly,
                 "assembly_label": assembly_label,
                 "gene": list_to_pipe_string(included_genes),
@@ -619,7 +636,7 @@ def output_annotation_results(candidate_dict, annotation_path, output_file):
     df = pd.DataFrame(annotation_files)
 
     # Columns used as grouping keys
-    keys = ["genomic_region", "assembly_label",
+    keys = ["genomic_region", "RefSeq_genes", "assembly_label",
             "domain_name", "ipr_name", "go_terms"]
 
     # Combine groups and assembly
@@ -660,9 +677,12 @@ if __name__ == "__main__":
     # extract sequences and prepare annotation using interpro
     candidate_dict = analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path)
 
+    excel_file = f"{main_path}/results/aspergillus_fumigatus_final_candidates.xlsx"
+    id_dict= build_region_to_genes(excel_file)
+
     # load annotation results and generate output
     final_output = f"{result_path}/interpro_annotation.xlsx"
-    output_annotation_results(candidate_dict, annotation_path, final_output)
+    output_annotation_results(candidate_dict, annotation_path, id_dict, final_output)
 
 
 

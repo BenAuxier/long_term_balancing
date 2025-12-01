@@ -433,15 +433,12 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
     return final_candidates
 
 
-def save_final_candidates(final_candidates, output_path, species):
+def save_final_candidates(final_candidates, output_file):
     """
     Save a list of candidate dictionaries to an Excel file.
     Each dictionary becomes one row, and 'gene_info' (a nested dict)
     is converted into a "key:value" comma-separated string.
     """
-
-    # Ensure the output directory exists
-    os.makedirs(output_path, exist_ok=True)
 
     processed_data = []
 
@@ -458,21 +455,18 @@ def save_final_candidates(final_candidates, output_path, species):
     # Create a DataFrame (keys automatically become column headers)
     df = pd.DataFrame(processed_data)
 
-    # Build the output file path
-    output_file = os.path.join(output_path, f"{species}_final_candidates.xlsx")
-
     # Save to Excel (requires 'openpyxl' installed)
     df.to_excel(output_file, index=False)
 
     print(f"Final candidate data (genes) saved to: {output_file}")
-    return output_path
+    return output_file
 
-def extract_candidates(candidate_data_summary, results_path, candidate_data, genome_num, annotation_sorted, species, CDS_dict):
+def extract_candidates(candidate_data_summary, output_file, candidate_data, genome_num, annotation_sorted, CDS_dict):
 
     # find and save final candidate genes and related information
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num,
                                              annotation_sorted, CDS_dict)
-    results_path = save_final_candidates(final_candidates, results_path, species)
+    results_path = save_final_candidates(final_candidates, output_file)
 
     return results_path
 
