@@ -2,6 +2,7 @@ import csv
 import pandas as pd
 import os
 import glob
+import subprocess
 from Bio import SeqIO
 from load_reference import read_gff
 from load_reference import read_gff_augustus
@@ -361,26 +362,29 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
                              annotation_sorted_augustus, output_path, extend,
                              ref_assembly, label)
 
-def find_reference_gene(annotation_sorted, seq, start, end, CDS_dict):
+def find_reference_gene(annotation_sorted, seq, start, end, ID_dict):
 
     #find the gene id included in a selected genomic region
     seq_annotation = annotation_sorted[seq]
 
     genes_included = []
+    CDS_included = []
     for annotation in seq_annotation:
         annotation_id = annotation["id"]
         annotation_start = annotation["start"]
         annotation_end = annotation["end"]
-
-        if CDS_dict:
-            annotation_id = CDS_dict[annotation_id]
-
         if (end < annotation_start) or (annotation_end < start):
             continue
 
         genes_included.append(annotation_id)
 
-    return genes_included
+        if not ID_dict:
+            continue
+
+        CDS_id = ID_dict[annotation_id]
+        CDS_included.append(CDS_id)
+
+    return genes_included, CDS_included
 
 def find_final_candidates(candidate_data_summary, candidate_data, genome_num, annotation_sorted, CDS_dict):
     """
@@ -406,14 +410,15 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
             if candidate_seq == region_seq:
                 if (region_start <= candidate_start <= region_end) and (region_start <= candidate_end <= region_end):
 
-                    genes_included = find_reference_gene(annotation_sorted, candidate_seq,
+                    genes_included, CDS_included = find_reference_gene(annotation_sorted, candidate_seq,
                                                          candidate_start,candidate_end, CDS_dict)
 
                     candidate_info = {
                         "genomic_region": region_name,
                         "id": row.get("id", "."),
-                        "RefSeq_genes_included": genes_included,
-                        "RefSeq_genes_number": len(genes_included),
+                        "RefSeq_genes": genes_included,
+                        "RefSeq_CDS": CDS_included,
+                        "RefSeq_genes_number": len(CDS_included),
                         "seq_ID": row.get("seq_ID", "."),
                         "start": row.get("start", "."),
                         "end": row.get("end", "."),
@@ -454,7 +459,7 @@ def save_final_candidates(final_candidates, output_path, species):
     df = pd.DataFrame(processed_data)
 
     # Build the output file path
-    output_file = os.path.join(output_path, f"{species}final_candidates.xlsx")
+    output_file = os.path.join(output_path, f"{species}_final_candidates.xlsx")
 
     # Save to Excel (requires 'openpyxl' installed)
     df.to_excel(output_file, index=False)

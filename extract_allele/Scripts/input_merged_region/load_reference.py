@@ -163,18 +163,18 @@ def read_gff_dict(annotation_sorted):
 
     return annotation_dict
 
-def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
+def create_ID_dictionary(gff_path, ID_label = "locus_tag",keep_type = "CDS"):
     """
     Create ID dictionary between XP_ and other such as XM_ ID of CDS.
     Used to transfer the ID to XP, to label them in clinker
     :param gff_path:
     :return:
     """
-    CDS_dict = {}
+    ID_dict = {}
 
-    CDS_annotation = read_gff(gff_path, ID_label, "CDS")
+    ID_annotation = read_gff(gff_path, ID_label, keep_type)
 
-    for seq, annotation_list in CDS_annotation.items():
+    for seq, annotation_list in ID_annotation.items():
         for annotation in annotation_list:
             try:
                 protein_id = annotation["protein_id"]
@@ -186,9 +186,9 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag"):
             elif ID_label == "transcript_id":
                 using_ID = annotation["Parent"][4:].split('-')[-1]
 
-            CDS_dict[using_ID] = protein_id
+            ID_dict[using_ID] = protein_id
 
-    return CDS_dict
+    return ID_dict
 
 def load_annotation_reference(gff_path, ID_label, type_annotation):
     annotation_sorted = read_gff(gff_path, ID_label, type_annotation)

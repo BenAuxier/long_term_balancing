@@ -83,13 +83,15 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     gene_depth, gene_region_depth = calculate_depth_all(bam_file, main_path, gff_augustus_filtered,
                                                              lower_limit, upper_limit, base_interval, minimal_length)
     """
+
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
     annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label, type_annotation_augustus)
 
     #print(annotation_sorted)
     CDS_dict = False
-    CDS_dict = create_ID_dictionary(gff_refseq, ID_ref_label)
+    # dictionary between locus_tag and CDS (XM) ID
+    CDS_dict = create_ID_dictionary(gff_refseq, ID_ref_label, "CDS")
 
 
     # processes the input candidate mRNAs
@@ -121,7 +123,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     """
     sequence_path = extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
                                       sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
-    """
+    
     # run clinker for visualization
     print("running clinker")
 
@@ -132,7 +134,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     clinker_data_path = f"{results_path}/clinker_comparison"
     run_clinker_data(sequence_path, clinker_data_path, "0.01")
 
-
+    """
     """
     # align sequence onto reference sequence to doublecheck and debug
     realign_output_path = f"{results_path}/sequence_alignments"

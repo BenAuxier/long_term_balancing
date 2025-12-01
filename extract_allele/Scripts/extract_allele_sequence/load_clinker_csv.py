@@ -3,6 +3,8 @@ import os
 import glob
 import csv
 import subprocess
+import ast
+
 
 def load_clinker_csv(file_path, output_path):
     data = []
@@ -193,12 +195,18 @@ def find_intermediate(df, assembly, up_ref_gene, down_ref_gene):
 
 
 def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref, df_ref_diver, ratio_threhold, high_similarity_threshold):
+
     # finding the assmeblies and genes to extract genes in between
 
     up_genes_ref, up_genes_diver = search_ref_gene(upstream_gene, df_ref_ref, df_ref_diver, "upstream",
                                                                 ratio_threhold, high_similarity_threshold)
     down_genes_ref, down_genes_diver = search_ref_gene(downstream_gene, df_ref_ref, df_ref_diver,"downstream",
                                                                       ratio_threhold, high_similarity_threshold)
+
+    # if certain ref gene is not found:
+    if not all([up_genes_ref, up_genes_diver, down_genes_ref, down_genes_diver]):
+        return False
+
     extraction_info = []
     for up_assembly, up_gene in up_genes_ref.items():
         if up_assembly not in down_genes_ref.keys():
@@ -363,9 +371,13 @@ def analyze_clinker_results(input_data, annotation_dir, sequence_file):
     # find the gene that could be used as reference gene in reference genome
     info_extraction = analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
                      df_ref_diver, ratio_threhold, high_similarity_threshold)
+
     # [{'genomic_region': 'g3347.t1-g3348.t1', 'assembly_ID': 'GCA_018804105.1',
     # 'assembly_label': 'diver_allele',
     # 'included_genes': ['g7.t1.cds', 'g8.t1.cds']}, ...]
+
+    if info_extraction == False:
+        return False
 
     # If the output file already exists, delete it
     if os.path.exists(sequence_file):
@@ -373,21 +385,65 @@ def analyze_clinker_results(input_data, annotation_dir, sequence_file):
     # extract amino acid sequences
     for gene_info in info_extraction:
         extract_aminoacid(annotation_dir, gene_info, sequence_file)
+
     print("Protein sequences of candidate genomic region", genomic_region, "are saved to", sequence_file)
 
-    return True
+    return info_extraction
 
 def interpro_annotation(sequence_file, annotation_file):
+    final_output = f"{annotation_file}.tsv"
+    # if file exist, do not run interpro
+    if os.path.exists(final_output):
+        print(f"Annotation file already exists: {final_output}")
+        print("Skip running InterProScan.")
+        print("==========================================================")
+        return final_output
 
     cmd_interpro = ["interproscan.sh", "-f", "tsv", "-t", "p", "-i", sequence_file,
                     "--goterms", "-appl", "Pfam", "-b", annotation_file]
     subprocess.run(cmd_interpro)
 
-    annotation_file = f"{annotation_file}.tsv"
-    print("Interpro annotation results are saved to", annotation_file)
+    print("Interpro annotation results are saved to", final_output)
     print("==========================================================")
     return annotation_file
 
+
+def analyze_all_region(transformed_data_path,sequence_path, protein_path, annotation_path):
+    files = os.listdir(transformed_data_path)
+    candidate_info = []
+    for transformed_data in files:
+        genomic_region = transformed_data.split("_")[0]
+
+        # extract amino acid sequences for each assembly of this genomic region
+        input_data = f"{transformed_data_path}/{genomic_region}_data_transformed.csv"
+        annotation_dir = f"{sequence_path}/{genomic_region}"
+        sequence_file = f"{protein_path}/{genomic_region}_protein.fasta"
+        info_extraction = analyze_clinker_results(input_data, annotation_dir, sequence_file)
+
+        # if there is no ideal reference gene, skip this gene
+        if info_extraction == False:
+            print(f"{genomic_region} did not find reference gene in clinker data, skipping.")
+            print(f"==========================================================")
+            continue
+
+        # save candidate data information
+        candidate_info.extend(info_extraction)
+        candidate_dict = {}
+        for info in candidate_info:
+            region = info["genomic_region"]
+            assembly = info["assembly_ID"]
+            # if genomic_region not exist
+            if region not in candidate_dict:
+                candidate_dict[region] = {}
+            # save information
+            candidate_dict[region][assembly] = info
+
+        # make interpro annotation
+        annotation_file = f"{annotation_path}/{genomic_region}_protein"
+        #annotation_file = interpro_annotation(sequence_file, annotation_file)
+        #annotation_file = f"{annotation_file}.tsv"
+
+    return candidate_dict
 
 def load_interpro(interpro_file):
     columns = [
@@ -408,68 +464,181 @@ def load_interpro(interpro_file):
             row_dict = dict(zip(columns, fields))
             row_dict["go_terms"] = [t.strip("|") for t in row_dict["go_terms"].split("(InterPro)") if t.strip("|")]
 
+            # only keep Pfam annotation
+            if row_dict["source"] != "Pfam":
+                continue
+
             interpro_data.append(row_dict)
 
     return interpro_data
 
-def analyze_annotation(interpro_data):
-    go_info = []
+def interpro_data_dict(interpro_data):
+
+    # first extract data and make a dictionary
+    interpro_dict = {}
+
     for row in interpro_data:
-        # only keep Pfam annotation
-        if row["source"] != "Pfam":
-            continue
         gene_info = row["seq_id"].split("__")
-        genomic_region = gene_info[0]
         assembly_id = gene_info[1]
-        assembly_label = gene_info[2]
         gene = gene_info[3]
-        domain_name = row["domain_name"]
-        ipr_name = row["ipr_name"]
-        go_terms = row["go_terms"]
 
-        all_info = {
-            "genomic_region": genomic_region,
-            "assembly_id": assembly_id,
-            "assembly_label": assembly_label,
-            "gene": gene,
-            "domain_name": domain_name,
-            "ipr_name": ipr_name,
-            "go_terms": go_terms
+        if assembly_id not in interpro_dict:
+            interpro_dict[assembly_id] = {}
+
+        interpro_dict[assembly_id][gene] = {
+            "domain_name": "unpredicted" if row["domain_name"] == "-" else row["domain_name"],
+            "ipr_name": "unpredicted" if row["ipr_name"] == "-" else row["ipr_name"],
+            "go_terms": "unpredicted" if row["go_terms"] == ["-"] else row["go_terms"]
         }
-        go_info.append(all_info)
 
-    return go_info
+    return interpro_dict
 
+def list_to_pipe_string(lst):
+    """
+    Convert a list of items to a string separated by ' | '.
+    If the list is empty or None, return an empty string.
+    """
+    if not lst:
+        return ""
+    list_string = " | ".join(str(item) for item in lst)
+    return list_string
 
-def analyze_all_region(transformed_data_path,sequence_path, protein_path, annotation_path):
-    files = os.listdir(transformed_data_path)
-    annotation_files = []
-    for transformed_data in files:
-        genomic_region = transformed_data.split("_")[0]
+def analyze_annotation(assembly, included_genes, interpro_dict):
+    """
 
-        # extract amino acid sequences for each assembly of this genomic region
-        input_data = f"{transformed_data_path}/{genomic_region}_data_transformed.csv"
-        annotation_dir = f"{sequence_path}/{genomic_region}"
-        sequence_file = f"{protein_path}/{genomic_region}_protein.fasta"
-        analyze_clinker_results(input_data, annotation_dir, sequence_file)
+    :param assembly:
+    :param included_genes:
+    :param interpro_dict:
+    :return:
+    """
 
-        # make interpro annotation
-        annotation_file = f"{annotation_path}/{genomic_region}_protein"
-        annotation_file = interpro_annotation(sequence_file, annotation_file)
-        #annotation_file = f"{annotation_file}.tsv"
+    domain_info = []
+    go_info = []
+    ipr_info = []
+    for gene in included_genes:
+        gene_id = gene.split(".")[0]
 
-def output_annotation_results(annotation_path):
+        if  gene_id not in interpro_dict[assembly].keys():
+            domain_info.append("unpredicted")
+            go_info.append("unpredicted")
+            ipr_info.append("unpredicted")
+            continue
+
+        gene_dict = interpro_dict[assembly][gene_id]
+        domain_name = gene_dict["domain_name"]
+        ipr_name = gene_dict["ipr_name"]
+        go_terms = gene_dict["go_terms"]
+
+        domain_info.append(domain_name)
+        ipr_info.append(ipr_name)
+        go_info.append(go_terms)
+
+    return domain_info, ipr_info, go_info
+
+def build_region_gene_dict(excel_file):
+    """
+    将 Excel 转换成结构:
+    {
+        genomic_region: {
+            id: [genes]
+        }
+    }
+    """
+
+    df = pd.read_excel(excel_file)
+
+    result = {}
+
+    for _, row in df.iterrows():
+        region = str(row["genomic_region"]).strip()
+        gene_id = str(row["id"]).strip()
+
+        # 将字符串形式的 list 转为 Python list
+        genes = row["RefSeq_genes"]
+        if isinstance(genes, str):
+            try:
+                genes = ast.literal_eval(genes)  # 处理 ['A','B','C']
+            except:
+                genes = []
+        elif pd.isna(genes):
+            genes = []
+
+        # 创建 region 子字典
+        if region not in result:
+            result[region] = {}
+
+        result[region][gene_id] = genes
+
+    return result
+
+def output_annotation_results(candidate_dict, annotation_path, output_file):
+    """
+
+    :param candidate_dict:
+    :param annotation_path:
+    :param output_file:
+    :return:
+    """
     files = os.listdir(annotation_path)
+
     annotation_files = []
     for annotation_data in files:
+        if not annotation_data.endswith(".tsv"):
+            continue
+        annotation_file = f"{annotation_path}/{annotation_data}"
+        interpro_data = load_interpro(annotation_file)
+        interpro_dict = interpro_data_dict(interpro_data)
+
         # load annotation
         genomic_region = annotation_data.split("_")[0]
-        annotation_file = f"{annotation_path}/{genomic_region}_protein"
-        annotation_data = load_interpro(annotation_file)
-        go_info = analyze_annotation(annotation_data)
-        annotation_files.extend(go_info)
+        region_info = candidate_dict[genomic_region]
+        for assembly, info in region_info.items():
 
+            if assembly not in interpro_dict.keys():
+                continue
 
+            assembly_label = info["assembly_label"]
+            included_genes = info["included_genes"]
+
+            # load annotation info for the gene of this assembly
+            domain_info, ipr_info, go_info = analyze_annotation(assembly, included_genes, interpro_dict)
+
+            all_info = {
+                "genomic_region": genomic_region,
+                "assembly_id": assembly,
+                "assembly_label": assembly_label,
+                "gene": list_to_pipe_string(included_genes),
+                "domain_name": list_to_pipe_string(domain_info),
+                "ipr_name": list_to_pipe_string(ipr_info),
+                "go_terms": list_to_pipe_string(go_info)
+            }
+
+            annotation_files.append(all_info)
+
+    # Create a DataFrame (keys automatically become column headers)
+    df = pd.DataFrame(annotation_files)
+
+    # Columns used as grouping keys
+    keys = ["genomic_region", "assembly_label",
+            "domain_name", "ipr_name", "go_terms"]
+
+    # Combine groups and assembly
+    df2 = (
+        df.groupby(keys, dropna=False)
+        .agg({
+            "assembly_id": list,
+            "gene": list
+        })
+        .reset_index()
+    )
+
+    # Newly added statistical column: Number of assemblies after merging
+    df2["assembly_number"] = df2["assembly_id"].apply(len)
+
+    # Save to Excel
+    df2.to_excel(output_file, index=False)
+
+    print(f"Final candidate data (genes) saved to: {output_file}")
 
 if __name__ == "__main__":
     # Convert to DataFrame
@@ -489,7 +658,11 @@ if __name__ == "__main__":
     os.makedirs(annotation_path, exist_ok=True)
 
     # extract sequences and prepare annotation using interpro
-    analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path)
+    candidate_dict = analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path)
+
+    # load annotation results and generate output
+    final_output = f"{result_path}/interpro_annotation.xlsx"
+    output_annotation_results(candidate_dict, annotation_path, final_output)
 
 
 

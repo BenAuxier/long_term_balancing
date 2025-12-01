@@ -4,7 +4,7 @@ import zipfile
 import shutil
 import glob
 import sys
-from augustus_annotation import run_augustus_on_fasta
+from make_outputs import run_augustus_on_fasta
 
 def calculate_genome_number(assembly_list):
     with open(assembly_list, "r") as f:
