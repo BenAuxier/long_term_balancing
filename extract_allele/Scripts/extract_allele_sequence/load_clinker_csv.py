@@ -169,6 +169,7 @@ def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_thr
         if ref_ratio >= ratio_threhold and diver_ratio >= ratio_threhold:
             # return similar up and down stream genes
             return similar_genes_ref, similar_genes_diver, round
+
         else:
             continue
 
@@ -217,6 +218,7 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
     for up_assembly, up_gene in up_genes_ref.items():
         if up_assembly not in down_genes_ref.keys():
             continue
+
         assembly = up_assembly
         down_gene = down_genes_ref[assembly]
         inter_gene_ref = find_intermediate(df_ref_ref, assembly, up_gene, down_gene)
@@ -225,7 +227,7 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
             "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "ref_allele",
-            "ref_rank": f"up {up_rank}, down {down_rank}",
+            "ref_included": f"up {up_rank-1}, down {down_rank-1}",
             #"up_ref_gene": up_gene,
             #"down_ref_gene": down_gene,
             "included_genes": inter_gene_ref
@@ -243,7 +245,7 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
             "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "diver_allele",
-            "ref_rank": f"up {up_rank}, down {down_rank}",
+            "ref_included": f"up {up_rank-1}, down {down_rank-1}",
             #"up_diver_gene": up_gene,
             #"down_diver_gene": down_genes_diver[assembly],
             "included_genes": inter_gene_diver
@@ -330,7 +332,7 @@ def extract_aminoacid(annotation_dir, gene_info, output_file):
                     out.write(protein_seq[i:i + 60] + "\n")
 
 
-def analyze_clinker_results(input_data, annotation_dir, sequence_file):
+def analyze_clinker_results(input_data, annotation_dir, sequence_file, high_similarity_threshold, ratio_threhold):
     """
 
 
@@ -362,9 +364,6 @@ def analyze_clinker_results(input_data, annotation_dir, sequence_file):
     num_diver_assemblies = len(df_ref_diver["Target_genome"].unique())
     num_all_assemblies = num_ref_assemblies + num_diver_assemblies
 
-    high_similarity_threshold = 0.85
-    low_similarity_threshold = 0.6
-
     query_gene = upstream_gene.split(".")[0]
 
     # check whether the candidate gene have high similarity with ref alleles
@@ -372,9 +371,6 @@ def analyze_clinker_results(input_data, annotation_dir, sequence_file):
     """similar_genes_ref = count_similar_genes(df_ref_ref, query_gene, high_similarity_threshold)
     num_ref = len(similar_genes_ref.keys())
     ratio_ref = num_ref / num_ref_assemblies"""
-
-    # query the upstream reference gene.
-    ratio_threhold = 0.6
 
     # find the gene that could be used as reference gene in reference genome
     info_extraction = analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
@@ -416,7 +412,7 @@ def interpro_annotation(sequence_file, annotation_file):
     return annotation_file
 
 
-def analyze_all_region(transformed_data_path,sequence_path, protein_path, annotation_path):
+def analyze_all_region(transformed_data_path,sequence_path, protein_path, annotation_path, high_similarity_threshold, ratio_threhold):
     files = os.listdir(transformed_data_path)
     candidate_info = []
     for transformed_data in files:
@@ -426,7 +422,7 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
         input_data = f"{transformed_data_path}/{genomic_region}_data_transformed.csv"
         annotation_dir = f"{sequence_path}/{genomic_region}"
         sequence_file = f"{protein_path}/{genomic_region}_protein.fasta"
-        info_extraction = analyze_clinker_results(input_data, annotation_dir, sequence_file)
+        info_extraction = analyze_clinker_results(input_data, annotation_dir, sequence_file, high_similarity_threshold, ratio_threhold)
 
         # if there is no ideal reference gene, skip this gene
         if info_extraction == False:
@@ -450,7 +446,7 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
 
         # make interpro annotation
         annotation_file = f"{annotation_path}/{genomic_region}_protein"
-        #annotation_file = interpro_annotation(sequence_file, annotation_file)
+        annotation_file = interpro_annotation(sequence_file, annotation_file)
         #annotation_file = f"{annotation_file}.tsv"
 
     return candidate_dict
@@ -595,7 +591,15 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
         annotation_file = f"{annotation_path}/{annotation_data}"
         # load annotation
         genomic_region = annotation_data.split("_")[0]
+
+        # test
+        if not genomic_region == "g5348.t1-g5349.t1":
+            continue
+
         region_info = candidate_dict[genomic_region]
+        for key, value in region_info.items():
+            print(key, value)
+
 
         # load analysis results
         interpro_data = load_interpro(annotation_file)
@@ -605,7 +609,7 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             all_info = {
                 "genomic_region": genomic_region,
                 "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
-                "ref_rank": "",
+                "ref_included": "",
                 "assembly_id": "",
                 "assembly_label": "",
                 "gene": "",
@@ -619,16 +623,17 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
         interpro_dict = interpro_data_dict(interpro_data)
 
         for assembly, info in region_info.items():
+            #在这里看有哪些、没有哪些assembly
             assembly_label = info["assembly_label"]
             included_genes = info["included_genes"]
-            ref_rank = info["ref_rank"]
+            ref_included = info["ref_included"]
 
             # if no prediction for this assembly
             if assembly not in interpro_dict.keys():
                 all_info = {
                     "genomic_region": genomic_region,
                     "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
-                    "ref_rank": ref_rank,
+                    "ref_included": ref_included,
                     "assembly_id": assembly,
                     "assembly_label": assembly_label,
                     "gene": list_to_pipe_string(included_genes),
@@ -645,7 +650,7 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             all_info = {
                 "genomic_region": genomic_region,
                 "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
-                "ref_rank": ref_rank,
+                "ref_included": ref_included,
                 "assembly_id": assembly,
                 "assembly_label": assembly_label,
                 "gene": list_to_pipe_string(included_genes),
@@ -659,7 +664,7 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
     df = pd.DataFrame(annotation_files)
 
     # Columns used as grouping keys
-    keys = ["genomic_region", "RefSeq_genes", "ref_rank", "assembly_label",
+    keys = ["genomic_region", "RefSeq_genes", "ref_included", "assembly_label",
             "domain_name", "ipr_name", "go_terms"]
 
     # Combine groups and assembly
@@ -680,27 +685,35 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
 
     print(f"Final candidate data (genes) saved to: {output_file}")
 
+
 if __name__ == "__main__":
     # Convert to DataFrame
     # data of MAT1-2-4
-    main_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus"
+    #species = "aspergillus_fumigatus"
+    species = "aspergillus_oryzae"
+    main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
     sequence_path = f"{main_path}/extract_sequences"
     result_path = f"{main_path}/results"
 
     comparison_data_path = f"{result_path}/clinker_comparison"
     transformed_data_path = f"{result_path}/clinker_comparison/transformed_data"
     os.makedirs(transformed_data_path, exist_ok=True)
-    #transform_clinker_results(comparison_data_path, transformed_data_path)
+    transform_clinker_results(comparison_data_path, transformed_data_path)
 
     protein_path = f"{result_path}/clinker_comparison/protein_extraction"
     os.makedirs(protein_path, exist_ok=True)
     annotation_path = f"{result_path}/interpro_annotation"
     os.makedirs(annotation_path, exist_ok=True)
 
-    # extract sequences and prepare annotation using interpro
-    candidate_dict = analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path)
+    high_similarity_threshold = 0.85
+    low_similarity_threshold = 0.6
+    # query the upstream reference gene.
+    ratio_threhold = 0.6
 
-    excel_file = f"{main_path}/results/aspergillus_fumigatus_final_candidates.xlsx"
+    # extract sequences and prepare annotation using interpro
+    candidate_dict = analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path, high_similarity_threshold, ratio_threhold)
+
+    excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
     id_dict= build_region_to_genes(excel_file)
 
     # load annotation results and generate output
