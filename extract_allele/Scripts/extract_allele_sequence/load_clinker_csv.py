@@ -33,7 +33,6 @@ def load_clinker_csv(file_path, output_path):
                 query_label = query_sequence[4]
 
                 target_sequence = current_title[1].strip().split("__")
-                print(target_sequence)
                 target_genome = target_sequence[1]
                 target_seq = target_sequence[2]
                 target_pos = target_sequence[3]
@@ -119,7 +118,7 @@ def count_similar_genes(df, query_gene, high_similarity_threshold):
         #print(index, row)
         continue
 
-    assemblies = df_gene["Target_genome"].unique()
+    assemblies = df_gene["Target_genome"].unique().tolist()
 
     similar_genes = {}
     for target_assembly in assemblies:
@@ -138,7 +137,7 @@ def count_similar_genes(df, query_gene, high_similarity_threshold):
 
 def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_threhold, high_similarity_threshold):
     # Finding the reference gene that have high similarity with ref and diff assemblies.
-    local_genes = df_ref_ref["Query_gene"].unique()
+    local_genes = df_ref_ref["Query_gene"].unique().tolist()
 
     if orientation == "upstream":
         query_genes_sorted = sorted(local_genes, reverse=True)
@@ -169,18 +168,22 @@ def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_thr
 
         if ref_ratio >= ratio_threhold and diver_ratio >= ratio_threhold:
             # return similar up and down stream genes
-            return similar_genes_ref, similar_genes_diver
+            return similar_genes_ref, similar_genes_diver, round
         else:
             continue
 
-    return False, False
+    return False, False, False
 
 def find_intermediate(df, assembly, up_ref_gene, down_ref_gene):
 
     # select the data of this genome assembly
     df_selected = df[df["Target_genome"] == assembly]
-    local_genes = df_selected["Target_gene"].unique()
-    query_genes_sorted = sorted(local_genes, reverse=False)
+    local_genes = df_selected["Target_gene"].unique().tolist()
+
+    # have not sorted, defaultly should be ok
+    query_genes_sorted = local_genes
+
+    # find intermediate genes
     inter_gene = []
     for i in range(len(query_genes_sorted)):
         gene = query_genes_sorted[i]
@@ -188,8 +191,11 @@ def find_intermediate(df, assembly, up_ref_gene, down_ref_gene):
             start_pos = i+1
         if gene == down_ref_gene:
             end_pos = i
-    if start_pos and end_pos:
+
+    if start_pos is not None and end_pos is not None and start_pos < end_pos:
         inter_gene = query_genes_sorted[start_pos:end_pos]
+    else:
+        inter_gene = ["no_gene"]
 
     return inter_gene
 
@@ -198,9 +204,9 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
 
     # finding the assmeblies and genes to extract genes in between
 
-    up_genes_ref, up_genes_diver = search_ref_gene(upstream_gene, df_ref_ref, df_ref_diver, "upstream",
+    up_genes_ref, up_genes_diver, up_rank = search_ref_gene(upstream_gene, df_ref_ref, df_ref_diver, "upstream",
                                                                 ratio_threhold, high_similarity_threshold)
-    down_genes_ref, down_genes_diver = search_ref_gene(downstream_gene, df_ref_ref, df_ref_diver,"downstream",
+    down_genes_ref, down_genes_diver, down_rank = search_ref_gene(downstream_gene, df_ref_ref, df_ref_diver,"downstream",
                                                                       ratio_threhold, high_similarity_threshold)
 
     # if certain ref gene is not found:
@@ -219,6 +225,7 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
             "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "ref_allele",
+            "ref_rank": f"up {up_rank}, down {down_rank}",
             #"up_ref_gene": up_gene,
             #"down_ref_gene": down_gene,
             "included_genes": inter_gene_ref
@@ -236,6 +243,7 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
             "genomic_region": genomic_region,
             "assembly_ID": assembly,
             "assembly_label": "diver_allele",
+            "ref_rank": f"up {up_rank}, down {down_rank}",
             #"up_diver_gene": up_gene,
             #"down_diver_gene": down_genes_diver[assembly],
             "included_genes": inter_gene_diver
@@ -428,10 +436,12 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
 
         # save candidate data information
         candidate_info.extend(info_extraction)
+
         candidate_dict = {}
         for info in candidate_info:
             region = info["genomic_region"]
             assembly = info["assembly_ID"]
+
             # if genomic_region not exist
             if region not in candidate_dict:
                 candidate_dict[region] = {}
@@ -498,7 +508,7 @@ def list_to_pipe_string(lst):
     Convert a list of items to a string separated by ' | '.
     If the list is empty or None, return an empty string.
     """
-    if not lst:
+    if len(lst) == 0:
         return ""
     list_string = " | ".join(str(item) for item in lst)
     return list_string
@@ -518,7 +528,7 @@ def analyze_annotation(assembly, included_genes, interpro_dict):
     for gene in included_genes:
         gene_id = gene.split(".")[0]
 
-        if  gene_id not in interpro_dict[assembly].keys():
+        if gene_id not in interpro_dict[assembly].keys():
             domain_info.append("unpredicted")
             go_info.append("unpredicted")
             ipr_info.append("unpredicted")
@@ -566,8 +576,6 @@ def build_region_to_genes(excel_file):
         # add gene
         result[region].extend(genes)
 
-
-
     return result
 
 def output_annotation_results(candidate_dict, annotation_path, id_dict, output_file):
@@ -591,11 +599,13 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
 
         # load analysis results
         interpro_data = load_interpro(annotation_file)
-        # if no prediction
+
+        # if no prediction for this genomic region
         if not interpro_data:
             all_info = {
                 "genomic_region": genomic_region,
                 "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
+                "ref_rank": "",
                 "assembly_id": "",
                 "assembly_label": "",
                 "gene": "",
@@ -609,12 +619,25 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
         interpro_dict = interpro_data_dict(interpro_data)
 
         for assembly, info in region_info.items():
-
-            if assembly not in interpro_dict.keys():
-                continue
-
             assembly_label = info["assembly_label"]
             included_genes = info["included_genes"]
+            ref_rank = info["ref_rank"]
+
+            # if no prediction for this assembly
+            if assembly not in interpro_dict.keys():
+                all_info = {
+                    "genomic_region": genomic_region,
+                    "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
+                    "ref_rank": ref_rank,
+                    "assembly_id": assembly,
+                    "assembly_label": assembly_label,
+                    "gene": list_to_pipe_string(included_genes),
+                    "domain_name": "unpredicted",
+                    "ipr_name": "unpredicted",
+                    "go_terms": "unpredicted"
+                }
+                annotation_files.append(all_info)
+                continue
 
             # load annotation info for the gene of this assembly
             domain_info, ipr_info, go_info = analyze_annotation(assembly, included_genes, interpro_dict)
@@ -622,6 +645,7 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             all_info = {
                 "genomic_region": genomic_region,
                 "RefSeq_genes": list_to_pipe_string(id_dict[genomic_region]),
+                "ref_rank": ref_rank,
                 "assembly_id": assembly,
                 "assembly_label": assembly_label,
                 "gene": list_to_pipe_string(included_genes),
@@ -629,14 +653,13 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
                 "ipr_name": list_to_pipe_string(ipr_info),
                 "go_terms": list_to_pipe_string(go_info)
             }
-
             annotation_files.append(all_info)
 
     # Create a DataFrame (keys automatically become column headers)
     df = pd.DataFrame(annotation_files)
 
     # Columns used as grouping keys
-    keys = ["genomic_region", "RefSeq_genes", "assembly_label",
+    keys = ["genomic_region", "RefSeq_genes", "ref_rank", "assembly_label",
             "domain_name", "ipr_name", "go_terms"]
 
     # Combine groups and assembly
