@@ -446,7 +446,7 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
 
         # make interpro annotation
         annotation_file = f"{annotation_path}/{genomic_region}_protein"
-        annotation_file = interpro_annotation(sequence_file, annotation_file)
+        #annotation_file = interpro_annotation(sequence_file, annotation_file)
         #annotation_file = f"{annotation_file}.tsv"
 
     return candidate_dict
@@ -698,7 +698,7 @@ if __name__ == "__main__":
     comparison_data_path = f"{result_path}/clinker_comparison"
     transformed_data_path = f"{result_path}/clinker_comparison/transformed_data"
     os.makedirs(transformed_data_path, exist_ok=True)
-    transform_clinker_results(comparison_data_path, transformed_data_path)
+    #transform_clinker_results(comparison_data_path, transformed_data_path)
 
     protein_path = f"{result_path}/clinker_comparison/protein_extraction"
     os.makedirs(protein_path, exist_ok=True)

@@ -16,6 +16,7 @@ from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
 from make_outputs import extract_candidates
 from make_outputs import extract_sequences
+from make_outputs import extract_sequences_interpro
 from visualization_clinker import run_clinker_visualization
 from visualization_clinker import run_clinker_data
 from doublecheck_alignment import annotate_file_path
@@ -124,21 +125,26 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     print("saving candidate genes")
     sequence_path = f"{main_path}/extract_sequences"
     """
-    sequence_path = extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
+    extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
                                       sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
-
     clinker_output_path = f"{results_path}/clinker_results"
     run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
 
+    
+    """
+    sequence_interpro = f"{main_path}/extract_sequences_interpro"
+
+
+
+    """
+    
     # run clinker for comparison data
     clinker_data_path = f"{results_path}/clinker_comparison"
     run_clinker_data(sequence_path, clinker_data_path, "0.01")
-
-    """
-    """
+    
     # align sequence onto reference sequence to doublecheck and debug
     realign_output_path = f"{results_path}/sequence_alignments"
     annotate_file_path(sequence_path, realign_output_path)

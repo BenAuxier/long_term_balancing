@@ -10,7 +10,7 @@ from analyze_position import random_select_assembly
 
 ###############################################################
 # augustus_annotation
-def run_augustus_on_fasta(fa_path,augustus_species, gff3_status = "off", suffix = ""):
+def run_augustus_on_fasta(fa_path, augustus_species, gff3_status = "off", suffix = ""):
     """
     Run AUGUSTUS on a single FASTA file and save the output in GFF3 format.
     """
@@ -21,6 +21,11 @@ def run_augustus_on_fasta(fa_path,augustus_species, gff3_status = "off", suffix 
         output_path = os.path.join(dir_path, f"{base}{suffix}.gff3")
     else:
         output_path = os.path.join(dir_path, f"{base}{suffix}.gff")
+
+    # check whether the annotation already exist
+    if os.path.exists(output_path):
+        print(f"[Skip] {output_path} already exists. Skipping AUGUSTUS run.")
+        return output_path
 
     print(f"Running AUGUSTUS on {fa_path} ...")
 
@@ -35,6 +40,7 @@ def run_augustus_on_fasta(fa_path,augustus_species, gff3_status = "off", suffix 
     # Run command and write output
     with open(output_path, "w") as out_f:
         subprocess.run(cmd, stdout=out_f, stderr=subprocess.PIPE, check=True)
+
     return output_path
 
 def annotate_file_path(input_dir,augustus_species, gff3_status = "off"):
@@ -488,3 +494,75 @@ def extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff
     extract_reference_allele_ref(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
 
     return sequence_path
+
+def check_sequence(sequence_path):
+    """
+
+    :param sequence_path:
+    :return: extracted_sequences
+    {"g3347.t1-g3348.t1":{'ref_allele': ['GCA_020502525.1', ...],
+    'diff_allele': ['GCA_001643665.1', ...], ...}
+
+    """
+
+    extracted_sequences = {}
+    sequence_files = os.listdir(sequence_path)
+    for genomic_region in sequence_files:
+        region_dict = {
+            "ref_allele": [],
+            "diff_allele": []
+        }
+
+        genomic_path = f"{sequence_path}/{genomic_region}"
+
+        # search for the file including genome accession in its name
+        assembly_pattern = os.path.join(genomic_path, "*.fa")
+        matches = glob.glob(assembly_pattern)
+        if not matches:
+            warning = f"Warning: No genome assembly found for {genomic_region}"
+            print(warning)
+            # return warning
+        matches = [os.path.basename(f) for f in matches]
+
+        for sequence_file in matches:
+            file_names = sequence_file.strip(".fa").split("__")
+
+            assembly = file_names[1]
+            status = file_names[-1]
+            print(genomic_region, assembly, status)
+            if status == "ref_allele":
+                region_dict["ref_allele"].append(assembly)
+                continue
+            elif status == "diff_allele":
+                region_dict["diff_allele"].append(assembly)
+                continue
+
+        extracted_sequences[genomic_region] = region_dict
+
+    return extracted_sequences
+
+
+
+def extract_sequences_interpro(sequence_interpro, candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus, sequence_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species):
+
+    #check extracted sequences
+    check_sequence(sequence_path)
+
+    # extract sequence and annotation from other genomes
+    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
+
+    #extract sequence from reference genome for Augustus annotation
+    extract_reference_seq_augustus(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
+
+    # make AUGUSTUS annotation
+    annotate_file_path(sequence_path, augustus_species,"on")
+
+    return sequence_path
+
+
+if __name__ == "__main__":
+    sequence_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/extract_sequences"
+    extracted_sequences = check_sequence(sequence_path)
+
+    # extract sequence and annotation from other genomes
+    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
