@@ -92,21 +92,22 @@ def process_data_augustus(input_file,ID_label = "locus_tag"):
                 continue
             parts = line.split("\t")
 
-            # Basic columns (first 8 columns + attributes + depth)
+            # Basic columns (first 8 columns + attributes + depth + base included)
             base_cols = [
                 "seq_ID", "source", "type", "start", "end",
-                "score", "strand", "phase", "id", "depth"
+                "score", "strand", "phase", "id", "depth", "included_bases"
             ]
             row = dict(zip(base_cols, parts))
             #print("row",row)
             row["start"] = int(row["start"])
             row["end"] = int(row["end"])
             row["depth"] = float(row["depth"])
+            row["included_bases"] = int(row["included_bases"])
 
             gene_data.append(row)
     return gene_data
 
-def filter_candidate(gene_data, lower_limit, upper_limit, minimal_length = 0):
+def filter_candidate(gene_data, lower_limit, upper_limit, min_length = 1, min_overlap = 1):
     """
     Only keeps the gene_data with depth between lower_limit and upper_limit.
     :param gene_data:
@@ -119,7 +120,14 @@ def filter_candidate(gene_data, lower_limit, upper_limit, minimal_length = 0):
     candidate_data = []
     for row in gene_data:
         length_gene = row["end"] - row["start"]
-        if length_gene <= minimal_length:
+
+        # gene length should larger than min_length
+        if length_gene <= min_length:
+            continue
+
+        # gene should overlap more than min_overlap with balancing selection region
+        overlap = row["included_bases"]
+        if overlap < min_overlap:
             continue
 
         depth = row["depth"]
@@ -142,7 +150,7 @@ def dict_gene_data(gene_data):
     return gene_data_dict
 
 
-def extract_candidate_position_list(candidate_data):
+def candidate_position_dict(candidate_data):
     """
     Transfer the list to a dictionary, only keep the necessary information
     :param candidate_data: A list including each gene_data as a dictionary.
@@ -279,12 +287,25 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
     return candidate_merge
 
-def process_merging(gene_region_depth, ID_augustus_label,lower_limit, upper_limit,annotation_sorted_dict, minimal_length = 0):
-
+def process_merging(gene_region_depth, ID_augustus_label,lower_limit, upper_limit,annotation_sorted_dict, minimal_length, min_overlap):
+    """
+    merge the genomic regions
+    :param gene_region_depth:
+    :param ID_augustus_label:
+    :param lower_limit:
+    :param upper_limit:
+    :param annotation_sorted_dict:
+    :param minimal_length:
+    :return:
+    """
+    #Load depth data
     gene_data = process_data_augustus(gene_region_depth, ID_augustus_label)
-    candidate_data = filter_candidate(gene_data, lower_limit, upper_limit,minimal_length)  # the candidate mRNA data
-    candidate_data_seq = extract_candidate_position_list(candidate_data)
-    candidate_merge = merge_candidate_position(candidate_data_seq, annotation_sorted_dict)
+    # filter to get the candidate mRNA data
+    candidate_data = filter_candidate(gene_data, lower_limit, upper_limit, minimal_length, min_overlap)
+    # transfer to dict
+    candidate_data_dict = candidate_position_dict(candidate_data)
+    # merge each candidate gene to genomic region
+    candidate_merge = merge_candidate_position(candidate_data_dict, annotation_sorted_dict)
     return candidate_data, candidate_merge
 
 

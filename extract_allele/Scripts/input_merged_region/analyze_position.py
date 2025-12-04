@@ -3,6 +3,23 @@ import pysam
 from collections import defaultdict
 import random
 from merge_region import dict_gene_data
+import json
+import os
+
+
+def save_json(obj, out_path):
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+    # create JSON file
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=4, ensure_ascii=False)
+
+    return out_path
+
+
+def load_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # Generate covered and uncovered genomes at one position.
@@ -532,7 +549,7 @@ def find_up_down_loci_one_status(one_status, up_down_locations, up_down_alignmen
         if not up_seq or not down_seq:
             continue
 
-        common_seq = set(up_seq).intersection(down_seq)
+        common_seq = list(set(up_seq).intersection(down_seq))
 
         if len(common_seq) == 0:
             continue
@@ -680,14 +697,16 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, gene_data, 
 
             summary = {
                 "region_name": candidate["region_name"],
-                "candidate_data": candidate,
+                #"candidate_data": candidate,
                 "position_info": up_down_locations,
-                "align_info": up_down_alignment,
-                "status_info": all_status,
+                #"align_info": up_down_alignment,
+                #"status_info": all_status,
                 "up_down_loci": all_up_down_loci,
-                "aligned_reads_number": aligned_reads_number
+                #"aligned_reads_number": aligned_reads_number
             }
 
             candidate_data_summary.append(summary)
 
     return candidate_data_summary
+
+

@@ -14,6 +14,8 @@ from load_reference import create_ID_dictionary
 from load_reference import load_annotation_reference
 from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
+from analyze_position import save_json
+from analyze_position import load_json
 from make_outputs import extract_candidates
 from make_outputs import extract_sequences
 from make_outputs import extract_sequences_interpro
@@ -61,17 +63,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     up_num = 5
     down_num = 5
     assembly_num = 7
+    assembly_num_interpro = 15
+
     lower_limit = genome_num * 0.2
     upper_limit = genome_num * 0.8
     print(lower_limit, upper_limit)
 
     minimal_alignment = genome_num * 0.3
     extend = 5000
-    minimal_length = 300  # the minimal length of candidate gene
+    min_length_gene = 300  # the minimal length of candidate gene
     transfer_id = True  # whether transfer genomic region name to CDS ID
 
-    minimal_length = 100 # the minimal length of the genomic region merged in "calculate_depth_all"
+    min_length_region = 200 # the minimal length of the genomic region merged in "calculate_depth_all"
     base_interval = "2" # the interval between merged base
+    min_overlap = 100 # the minimal length a candidate gene overlap with balancing selection region
 
     similarity_visualization = "0.3"
 
@@ -80,11 +85,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-
-    """
+    """"""
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
-                                                             lower_limit, upper_limit, base_interval, minimal_length)
-    """
+                            lower_limit, upper_limit, base_interval, min_length_region)
+
 
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -95,55 +99,64 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # dictionary between locus_tag and CDS (XM) ID
     CDS_dict = create_ID_dictionary(gff_refseq, ID_ref_label, "CDS")
 
-
     # processes the input candidate mRNAs
     print("loading candidate data")
     gene_depth_data = process_data_augustus(gene_depth, ID_augustus_label)
 
     print("merging candidate data")
-    filtered_candidate_data, candidate_merge = process_merging(gene_region_depth, ID_augustus_label, lower_limit, upper_limit,
-                                                               annotation_sorted_dict_augustus, minimal_length)
+    candidate_data, candidate_merge = process_merging(gene_region_depth, ID_augustus_label, lower_limit, upper_limit,
+                                                    annotation_sorted_dict_augustus, min_length_gene, min_overlap)
 
     #test
     #candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
 
     print("analyzing candidate data")
+    output_json = f"{main_path}/temp/candidate_data_summary.json"
+    """"""
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
+    
+    # save tmp file for candidate_data_summary
+    save_json(candidate_data_summary, output_json)
 
-    # save final candidate genes to an excel file
+
+    # reload candidate_data_summary
+    candidate_data_summary = load_json(output_json)
+
+    ## save final candidate genes to an excel file
     print("saving candidate genes")
     results_path = f"{main_path}/results"
-    os.makedirs(results_path, exist_ok=True)
     result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
-    extract_candidates(candidate_data_summary, result_file, filtered_candidate_data,
+    extract_candidates(candidate_data_summary, result_file, candidate_data,
                        genome_num,annotation_sorted, CDS_dict)
 
-    # extract sequences
+    #######################################################################
+    ## extract sequences for clinker visualization
     print("saving candidate genes")
-    sequence_path = f"{main_path}/extract_sequences"
-    """
+    sequence_path = f"{main_path}/extract_sequences/clinker_visualization"
+    clinker_output_path = f"{results_path}/clinker_results"
+    sequence_interpro = f"{main_path}/extract_sequences/clinker_interpro"
+    clinker_data_path = f"{results_path}/clinker_comparison"
+
+    """"""
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
                     sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
-    clinker_output_path = f"{results_path}/clinker_results"
     run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
-    """
 
-    sequence_interpro = f"{main_path}/extract_sequences_interpro"
-    os.makedirs(sequence_interpro, exist_ok=True)
-    """
+    #####################################################################################
+    additional_assembly = assembly_num_interpro - assembly_num
+    ## extract sequences for interpro analysis
     extract_sequences_interpro(sequence_interpro, candidate_data_summary,
                                sequence_path, extend, assembly_dir,
-                               assembly_num, augustus_species)
-    """
+                               additional_assembly, augustus_species)
+
     # run clinker for comparison data
-    clinker_data_path = f"{results_path}/clinker_comparison"
-    os.makedirs(clinker_data_path, exist_ok=True)
     run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
+
 
 
 

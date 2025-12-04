@@ -49,6 +49,7 @@ def calculate_average_depth(depth_file, gff_file, output_file):
     )
 
     avg_depths = []
+    bases = []
     for _, row in gff_df.iterrows():
         seqid = row["seqid"]
         start, end = row["start"], row["end"]
@@ -66,9 +67,11 @@ def calculate_average_depth(depth_file, gff_file, output_file):
             avg_depth = 0
 
         avg_depths.append(avg_depth)
+        bases.append(included_bases)
 
     gff_df["average_depth"] = avg_depths
-    gff_df["included_bases"] = included_bases
+    gff_df["included_bases"] = bases
+
 
     # 保存结果
     gff_df.to_csv(output_file, sep="\t", header=False, index=False)

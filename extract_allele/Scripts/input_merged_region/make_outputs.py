@@ -392,6 +392,7 @@ def extract_reference_allele_ref(candidate_data_summary, reference_genome, gff_p
                              annotation_sorted, output_path, extend,
                              ref_assembly, label)
 
+
 def extract_reference_allele_augustus(candidate_data_summary, reference_genome, gff_path_augustus, output_path, extend,
                              ref_assembly):
     """
@@ -411,8 +412,17 @@ def extract_reference_allele_augustus(candidate_data_summary, reference_genome, 
                              annotation_sorted_augustus, output_path, extend,
                              ref_assembly, label)
 
-def find_reference_gene(annotation_sorted, seq, start, end, ID_dict):
 
+def find_reference_gene(annotation_sorted, seq, start, end, ID_dict):
+    """
+
+    :param annotation_sorted:
+    :param seq:
+    :param start:
+    :param end:
+    :param ID_dict:
+    :return:
+    """
     #find the gene id included in a selected genomic region
     seq_annotation = annotation_sorted[seq]
 
@@ -511,6 +521,18 @@ def save_final_candidates(final_candidates, output_file):
     return output_file
 
 def extract_candidates(candidate_data_summary, output_file, candidate_data, genome_num, annotation_sorted, CDS_dict):
+    """
+
+    :param candidate_data_summary:
+    :param output_file:
+    :param candidate_data:
+    :param genome_num:
+    :param annotation_sorted:
+    :param CDS_dict:
+    :return:
+    """
+    results_path = os.path.dirname(output_file)
+    os.makedirs(results_path, exist_ok=True)
 
     # find and save final candidate genes and related information
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num,
@@ -520,7 +542,22 @@ def extract_candidates(candidate_data_summary, output_file, candidate_data, geno
     return results_path
 
 def extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus, sequence_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species):
+    """
 
+    :param candidate_data_summary:
+    :param reference_genome:
+    :param ref_gff:
+    :param ref_gff3_augustus:
+    :param sequence_path:
+    :param extend:
+    :param ref_assembly:
+    :param assembly_dir:
+    :param assembly_num:
+    :param augustus_species:
+    :return:
+    """
+
+    os.makedirs(sequence_path, exist_ok=True)
     # extract sequence and annotation from other genomes
     sequence_path = find_allele_sequence_inbetween(reference_genome, assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
@@ -577,7 +614,7 @@ def check_sequence(sequence_path):
                 region_dict["ref_allele"].append(assembly)
                 continue
             elif status == "diver_allele":
-                region_dict["diverdiver_allele"].append(assembly)
+                region_dict["diver_allele"].append(assembly)
                 continue
 
         extracted_sequences[genomic_region] = region_dict
@@ -606,6 +643,18 @@ def copy_sequences(sequence_path, sequence_interpro):
             subprocess.run(cmd)
 
 def extract_sequences_interpro(sequence_interpro, candidate_data_summary, sequence_path, extend, assembly_dir, assembly_num, augustus_species):
+    """
+
+    :param sequence_interpro:
+    :param candidate_data_summary:
+    :param sequence_path:
+    :param extend:
+    :param assembly_dir:
+    :param assembly_num:
+    :param augustus_species:
+    :return:
+    """
+    os.makedirs(sequence_interpro, exist_ok=True)
 
     #check extracted sequences
     extracted_sequences = check_sequence(sequence_path)
