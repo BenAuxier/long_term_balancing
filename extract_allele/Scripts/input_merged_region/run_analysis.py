@@ -77,12 +77,12 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     ##########################################################################
 
-    # analyze the depth of the genomic regions of
+    # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
 
     """
-    gene_depth, gene_region_depth = calculate_depth_all(bam_file, main_path, gff_augustus_filtered,
+    calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                                                              lower_limit, upper_limit, base_interval, minimal_length)
     """
 
@@ -131,11 +131,11 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     print("running clinker")
     clinker_output_path = f"{results_path}/clinker_results"
     run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
-    
-    
+    """
 
     sequence_interpro = f"{main_path}/extract_sequences_interpro"
     os.makedirs(sequence_interpro, exist_ok=True)
+    """
     extract_sequences_interpro(sequence_interpro, candidate_data_summary,
                                sequence_path, extend, assembly_dir,
                                assembly_num, augustus_species)
