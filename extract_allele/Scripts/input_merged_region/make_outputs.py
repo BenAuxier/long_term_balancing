@@ -115,7 +115,7 @@ def find_genome_assembly_path(assembly_dir, genome):
     return genome_assembly_path
 
 
-def extract_region_seq(allele_info, region_name, label, assembly_dir, output_path, extend, assembly_num):
+def extract_region_seq(allele_info, region_name, label, assembly_dir, output_path, extend, assembly_num, genome_exclusion = []):
     """
     Extract the sequence of specific position of a genome assembly
     :param allele_info:
@@ -127,7 +127,7 @@ def extract_region_seq(allele_info, region_name, label, assembly_dir, output_pat
     :return:
     """
 
-    allele_info_selected = random_select_assembly(allele_info, assembly_num)
+    allele_info_selected = random_select_assembly(allele_info, assembly_num, genome_exclusion)
 
     for genome, info in allele_info_selected.items():
         seq = info["seq_chromosome"]
@@ -170,7 +170,7 @@ def extract_region_seq(allele_info, region_name, label, assembly_dir, output_pat
     return True
 
 
-def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_path, extend, assembly_num):
+def find_allele_sequence_inbetween(reference_genome, assembly_dir, candidate_data_summary, output_path, extend, assembly_num):
     """
 
     :param reference_genome:
@@ -191,14 +191,57 @@ def find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, output_
         region_name = summary["region_name"]
 
         ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
-        diff_allele_info = summary["up_down_loci"]["diff_up_down_loci"]
+        diver_allele_info = summary["up_down_loci"]["diver_up_down_loci"]
+
+        # not extract the reference genome
+        genome_exclusion = [reference_genome]
 
         ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
-                                         assembly_num)
-        diff_extract = extract_region_seq(diff_allele_info, region_name, "diff_allele", assembly_dir, output_path,
-                                          extend, assembly_num)
+                                         assembly_num, genome_exclusion)
+        diver_extract = extract_region_seq(diver_allele_info, region_name, "diver_allele", assembly_dir, output_path,
+                                          extend, assembly_num, genome_exclusion)
 
     return output_path
+
+def extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_summary, output_path, extend, assembly_num):
+    """
+
+    :param reference_genome:
+    :param assembly_dir:
+    :param candidate_data_summary:
+    summary = {
+                "region_name": candidate["region_name"],
+                "position_info": up_down_locations,
+                "align_info": up_down_alignment,
+                "status_info": all_status,
+                "up_down_loci": all_up_down_loci,
+                "aligned_reads_number": aligned_reads_number
+            }
+    :param output_path:
+    :return:
+    """
+    for summary in candidate_data_summary:  # the summary information of each candidate gene
+        region_name = summary["region_name"]
+
+        if region_name not in extracted_sequences.keys():
+            continue
+
+        region_extracted = extracted_sequences[region_name]
+
+        # not include these genomes
+        ref_extracted = region_extracted["ref_allele"]
+        diver_extracted = region_extracted["diver_allele"]
+
+        ref_allele_info = summary["up_down_loci"]["ref_up_down_loci"]
+        diver_allele_info = summary["up_down_loci"]["diver_up_down_loci"]
+
+        ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
+                                         assembly_num,ref_extracted)
+        diver_extract = extract_region_seq(diver_allele_info, region_name, "diver_allele", assembly_dir, output_path,
+                                          extend, assembly_num,diver_extracted)
+
+    return output_path
+
 
 def extract_reference_seq_augustus(candidate_data_summary, reference_genome, gff_path, output_path, extend,
                              ref_assembly):
@@ -479,7 +522,7 @@ def extract_candidates(candidate_data_summary, output_file, candidate_data, geno
 def extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus, sequence_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species):
 
     # extract sequence and annotation from other genomes
-    sequence_path = find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
+    sequence_path = find_allele_sequence_inbetween(reference_genome, assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
     #extract sequence from reference genome for Augustus annotation
     extract_reference_seq_augustus(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
@@ -501,7 +544,7 @@ def check_sequence(sequence_path):
     :param sequence_path:
     :return: extracted_sequences
     {"g3347.t1-g3348.t1":{'ref_allele': ['GCA_020502525.1', ...],
-    'diff_allele': ['GCA_001643665.1', ...], ...}
+    'diver_allele': ['GCA_001643665.1', ...], ...}
 
     """
 
@@ -510,7 +553,7 @@ def check_sequence(sequence_path):
     for genomic_region in sequence_files:
         region_dict = {
             "ref_allele": [],
-            "diff_allele": []
+            "diver_allele": []
         }
 
         genomic_path = f"{sequence_path}/{genomic_region}"
@@ -518,6 +561,7 @@ def check_sequence(sequence_path):
         # search for the file including genome accession in its name
         assembly_pattern = os.path.join(genomic_path, "*.fa")
         matches = glob.glob(assembly_pattern)
+
         if not matches:
             warning = f"Warning: No genome assembly found for {genomic_region}"
             print(warning)
@@ -529,40 +573,88 @@ def check_sequence(sequence_path):
 
             assembly = file_names[1]
             status = file_names[-1]
-            print(genomic_region, assembly, status)
             if status == "ref_allele":
                 region_dict["ref_allele"].append(assembly)
                 continue
-            elif status == "diff_allele":
-                region_dict["diff_allele"].append(assembly)
+            elif status == "diver_allele":
+                region_dict["diverdiver_allele"].append(assembly)
                 continue
 
         extracted_sequences[genomic_region] = region_dict
 
     return extracted_sequences
 
+def copy_sequences(sequence_path, sequence_interpro):
+    sequence_files = os.listdir(sequence_path)
+    for genomic_region in sequence_files:
+        genomic_path_old = f"{sequence_path}/{genomic_region}"
+        genomic_path_new = f"{sequence_interpro}/{genomic_region}"
 
+        if not os.path.exists(genomic_path_old):
+            continue
 
-def extract_sequences_interpro(sequence_interpro, candidate_data_summary, reference_genome, ref_gff, ref_gff3_augustus, sequence_path, extend, ref_assembly,assembly_dir,assembly_num, augustus_species):
+        # if the new path do not exist (when all possible assemblies already extracted)
+        if not os.path.exists(genomic_path_new):
+            os.makedirs(genomic_path_new, exist_ok=True)
+
+        # search for the file including genome accession in its name
+        assembly_pattern = os.path.join(genomic_path_old, "*")
+        matches = glob.glob(assembly_pattern)
+
+        for file_path in matches:
+            cmd = ["cp", file_path, genomic_path_new]
+            subprocess.run(cmd)
+
+def extract_sequences_interpro(sequence_interpro, candidate_data_summary, sequence_path, extend, assembly_dir, assembly_num, augustus_species):
 
     #check extracted sequences
-    check_sequence(sequence_path)
-
-    # extract sequence and annotation from other genomes
-    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
-
-    #extract sequence from reference genome for Augustus annotation
-    extract_reference_seq_augustus(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
-
-    # make AUGUSTUS annotation
-    annotate_file_path(sequence_path, augustus_species,"on")
-
-    return sequence_path
-
-
-if __name__ == "__main__":
-    sequence_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/extract_sequences"
     extracted_sequences = check_sequence(sequence_path)
 
     # extract sequence and annotation from other genomes
-    find_allele_sequence_inbetween(assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
+    extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
+
+    # make AUGUSTUS annotation
+    annotate_file_path(sequence_path, augustus_species, "on")
+
+    #copy other previously extracted sequences and annotations to filepath
+    copy_sequences(sequence_path, sequence_interpro)
+
+    return True
+
+
+
+
+if __name__ == "__main__":
+    # information
+    reference_genome = "GCF_000002655.1"  # genome annotation should be GCF version
+    species = "aspergillus_fumigatus"
+    augustus_species = "aspergillus_fumigatus"
+
+    type_annotation_ref = "mRNA"  # type of annotation used in depth calculation, the third column
+    type_annotation_augustus = "transcript"  # type of annotation used in depth calculation, the third column
+
+    key_words = None  # the keywords that have to be included in the annotation
+    ID_ref_label = "locus_tag"  #
+    ID_augustus_label = "gene_id"  # this is the key that the gene/mRNA id follows in gff file
+
+    # file paths, including all input files
+    base_path = "/lustre/BIF/nobackup/leng010/test"
+    # path to specific species
+    main_path = f"{base_path}/{species}"
+    assembly_dir = f"{main_path}/genome_assemblies"
+    ref_path = f"{main_path}/reference_genome"
+    ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
+    gff_refseq = f"{ref_path}/{reference_genome}_genomic.gff"
+    gff_refseq_filtered = f"{gff_refseq[:-4]}_{type_annotation_ref}.gff"
+    gff_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff"
+    gff3_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff3"
+    gff_augustus_filtered = f"{gff_augustus[:-4]}_{type_annotation_augustus}.gff"
+    bam_path = f"{main_path}/alignment"
+    bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
+    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
+
+    sequence_path = "/lustre/BIF/nobackup/leng010/test/aspergillus_fumigatus/extract_sequences"
+    extracted_sequences = check_sequence(sequence_path)
+
+    ###########################################################################
+

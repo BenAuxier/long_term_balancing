@@ -136,7 +136,7 @@ def count_similar_genes(df, query_gene, high_similarity_threshold):
     return similar_genes
 
 def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_threhold, high_similarity_threshold):
-    # Finding the reference gene that have high similarity with ref and diff assemblies.
+    # Finding the reference gene that have high similarity with ref and diver assemblies.
     local_genes = df_ref_ref["Query_gene"].unique().tolist()
 
     if orientation == "upstream":
@@ -152,6 +152,9 @@ def search_ref_gene(query_gene, df_ref_ref, df_ref_diver, orientation, ratio_thr
 
     num_ref_assemblies = len(df_ref_ref["Target_genome"].unique())
     num_diver_assemblies = len(df_ref_diver["Target_genome"].unique())
+
+    if num_ref_assemblies * num_diver_assemblies == 0:
+        return False, False, False
 
     round = 0
     for candidate_gene in candidate_ref_genes:
@@ -352,14 +355,14 @@ def analyze_clinker_results(input_data, annotation_dir, sequence_file, high_simi
     # only select the data when query sequence is ref_AUGUSTUS
     df_ref_data = df[
         (df["Query_label"] == "ref_AUGUSTUS") &
-        (df["Target_label"].isin(["ref_allele", "diff_allele"]))
+        (df["Target_label"].isin(["ref_allele", "diver_allele"]))
         ]
 
     #extract the data for ref and divergent allele separately
     df_ref_ref = df_ref_data[df_ref_data["Target_label"] == "ref_allele"]
-    df_ref_diver = df_ref_data[df_ref_data["Target_label"] == "diff_allele"]
+    df_ref_diver = df_ref_data[df_ref_data["Target_label"] == "diver_allele"]
 
-    # number of ref and diff assemblies
+    # number of ref and divergent assemblies
     num_ref_assemblies = len(df_ref_ref["Target_genome"].unique())
     num_diver_assemblies = len(df_ref_diver["Target_genome"].unique())
     num_all_assemblies = num_ref_assemblies + num_diver_assemblies

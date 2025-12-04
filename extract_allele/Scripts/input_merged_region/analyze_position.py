@@ -10,7 +10,7 @@ from merge_region import dict_gene_data
 def extract_align_seq(bam_path, seq, start, end, full_cover=True):
     """
     Extract the sequence name that are aligned to one genomic position (chr, start, end) of the BAM file.
-    The sequences are from different genome assemblies.
+    The sequences are from divergent genome assemblies.
     :arg bam_path: Path to the BAM file.
     :arg seq: Sequence name (in reference genome) of the genomic position.
     :arg start: Start position.
@@ -353,7 +353,7 @@ def find_candidate_align(up_down_locations, bam_path, assembly_path):
 
 # Function: randomly sample n unaligned sequences from the up_down_alignment of a given gene,
 # and then analyze the state at each position for each of them
-def random_select_assembly(info_list, assembly_num):
+def random_select_assembly(info_list, assembly_num, genome_exclusion = []):
     """
     Randomly sample n unaligned sequences at the interested mRNA position.
     This function is currently not used!
@@ -362,7 +362,10 @@ def random_select_assembly(info_list, assembly_num):
     :return: selected_assemblies, list of selected assemblies
     """
     assemblies = list(info_list.keys())
-    number_assemblies = len(assemblies)
+
+    assemblies_filtered = [x for x in assemblies if x not in genome_exclusion]
+
+    number_assemblies = len(assemblies_filtered)
     if number_assemblies == 0:
         info_selected = {}
 
@@ -370,7 +373,7 @@ def random_select_assembly(info_list, assembly_num):
         info_selected = info_list
 
     elif number_assemblies > assembly_num:
-        assemblies_selected = random.sample(assemblies, assembly_num)
+        assemblies_selected = random.sample(assemblies_filtered, assembly_num)
 
         info_selected = {}
 
@@ -415,7 +418,7 @@ def find_candidate_involvement(up_down_alignment):
     """
     # get the random assembly list to test status
     assemblies_ref_allele = up_down_alignment["position_assembly"]["involved_assembly"]
-    assemblies_diff_allele = up_down_alignment["position_assembly"]["uninvolved_assembly"]
+    assemblies_diver_allele = up_down_alignment["position_assembly"]["uninvolved_assembly"]
 
     # get the position information
     upstream_reads = up_down_alignment["upstream_position_assembly"]
@@ -423,7 +426,7 @@ def find_candidate_involvement(up_down_alignment):
 
     all_status = {
         "ref_allele": find_assembly_status(assemblies_ref_allele, upstream_reads, downstream_reads),
-        "diff_allele": find_assembly_status(assemblies_diff_allele, upstream_reads, downstream_reads)
+        "diver_allele": find_assembly_status(assemblies_diver_allele, upstream_reads, downstream_reads)
     }
     return all_status
 
@@ -580,16 +583,16 @@ def filter_up_down_loci(up_down_loci, interval_difference=250):
 
 def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
     ref_allele_status = all_status["ref_allele"]
-    diff_allele_status = all_status["diff_allele"]
+    diver_allele_status = all_status["diver_allele"]
 
     ref_up_down_loci = find_up_down_loci_one_status(ref_allele_status, up_down_locations, up_down_alignment)
     ref_up_down_loci_filtered = filter_up_down_loci(ref_up_down_loci, 250)
 
-    diff_up_down_loci = find_up_down_loci_one_status(diff_allele_status, up_down_locations, up_down_alignment)
-    diff_up_down_loci_filtered = filter_up_down_loci(diff_up_down_loci, 250)
+    diver_up_down_loci = find_up_down_loci_one_status(diver_allele_status, up_down_locations, up_down_alignment)
+    diver_up_down_loci_filtered = filter_up_down_loci(diver_up_down_loci, 250)
     all_up_down_loci = {
         "ref_up_down_loci": ref_up_down_loci_filtered,
-        "diff_up_down_loci": diff_up_down_loci_filtered
+        "diver_up_down_loci": diver_up_down_loci_filtered
     }
 
     return all_up_down_loci
@@ -598,13 +601,13 @@ def find_up_down_loci(all_status, up_down_locations, up_down_alignment):
 def count_aligned_reads(all_up_down_loci):
     # count the number of reads completely aligned to the interval.
     ref_up_down_loci = all_up_down_loci["ref_up_down_loci"]
-    diff_up_down_loci = all_up_down_loci["diff_up_down_loci"]
+    diver_up_down_loci = all_up_down_loci["diver_up_down_loci"]
     ref_assembly_number = len(ref_up_down_loci.keys())
-    diff_assembly_number = len(diff_up_down_loci.keys())
+    diver_assembly_number = len(diver_up_down_loci.keys())
     aligned_reads_number = {
         "ref_assembly_number": ref_assembly_number,
-        "diff_assembly_number": diff_assembly_number,
-        "all_assembly_number": ref_assembly_number + diff_assembly_number
+        "diver_assembly_number": diver_assembly_number,
+        "all_assembly_number": ref_assembly_number + diver_assembly_number
     }
 
     return aligned_reads_number
@@ -657,9 +660,9 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, gene_data, 
 
             # Check whether both alleles exist
             ref_allele_info = all_up_down_loci["ref_up_down_loci"]
-            diff_allele_info = all_up_down_loci["diff_up_down_loci"]
+            diver_allele_info = all_up_down_loci["diver_up_down_loci"]
 
-            if len(ref_allele_info) == 0 or len(diff_allele_info) == 0:
+            if len(ref_allele_info) == 0 or len(diver_allele_info) == 0:
                 continue
 
             aligned_reads_number = count_aligned_reads(all_up_down_loci)
@@ -667,6 +670,12 @@ def analyze_all_candidate_position(selected_data, annotation_sorted, gene_data, 
             # Filter the complicated genomic region where not many reads completely aligned to
             all_aligned_reads_number = aligned_reads_number["all_assembly_number"]
             if all_aligned_reads_number < minimal_alignment:
+                continue
+
+            ref_aligned_number = aligned_reads_number["ref_assembly_number"]
+            diver_aligned_number = aligned_reads_number["diver_assembly_number"]
+
+            if ref_aligned_number < minimal_alignment/3 or diver_aligned_number < minimal_alignment/3:
                 continue
 
             summary = {

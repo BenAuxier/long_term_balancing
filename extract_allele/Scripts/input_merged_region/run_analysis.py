@@ -117,33 +117,44 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     results_path = f"{main_path}/results"
     os.makedirs(results_path, exist_ok=True)
     result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
-    results_path = extract_candidates(candidate_data_summary, result_file, filtered_candidate_data,
+    extract_candidates(candidate_data_summary, result_file, filtered_candidate_data,
                        genome_num,annotation_sorted, CDS_dict)
-
 
     # extract sequences
     print("saving candidate genes")
     sequence_path = f"{main_path}/extract_sequences"
     """
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
-                                      sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
+                    sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
     clinker_output_path = f"{results_path}/clinker_results"
     run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
-
     
-    """
+    
+
     sequence_interpro = f"{main_path}/extract_sequences_interpro"
-
-
-
+    os.makedirs(sequence_interpro, exist_ok=True)
+    extract_sequences_interpro(sequence_interpro, candidate_data_summary,
+                               sequence_path, extend, assembly_dir,
+                               assembly_num, augustus_species)
     """
-    
     # run clinker for comparison data
     clinker_data_path = f"{results_path}/clinker_comparison"
-    run_clinker_data(sequence_path, clinker_data_path, "0.01")
+    os.makedirs(clinker_data_path, exist_ok=True)
+    run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
+
+
+
+
+
+
+
+
+    """
+    
+    
     
     # align sequence onto reference sequence to doublecheck and debug
     realign_output_path = f"{results_path}/sequence_alignments"
