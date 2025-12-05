@@ -455,12 +455,12 @@ def interpro_annotation(sequence_file, annotation_file):
 
     print("Interpro annotation results are saved to", final_output)
     print("==========================================================")
-    return annotation_file
+    return final_output
 
 
-def analyze_all_region(transformed_data_path,sequence_path, protein_path, annotation_path, high_threshold, basic_threshold, ratio_threhold):
+def extract_all_sequences(transformed_data_path,sequence_path, protein_path, high_threshold, basic_threshold, ratio_threhold):
     """
-
+    extract sequences for all candidates, and make dictionary including all extraction info
     :param transformed_data_path:
     :param sequence_path:
     :param protein_path:
@@ -470,7 +470,7 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
     :param ratio_threhold:
     :return:
     """
-
+    os.makedirs(protein_path, exist_ok=True)
     files = os.listdir(transformed_data_path)
     candidate_info = []
     for transformed_data in files:
@@ -502,19 +502,41 @@ def analyze_all_region(transformed_data_path,sequence_path, protein_path, annota
             # save information
             candidate_dict[region][assembly] = info
 
+    return candidate_dict
+
+def interpro_all_sequences(protein_path, annotation_path):
+    """
+
+    :param protein_path:
+    :param annotation_path:
+    :return:
+    """
     # perform interpro annotation for each candidate sequence
+    os.makedirs(annotation_path, exist_ok=True)
     sequence_files = os.listdir(protein_path)
+    tasks = []
+    with ProcessPoolExecutor(max_workers=4) as executor:
+        for sequence_file in sequence_files:
+            sequence_path = os.path.join(protein_path, sequence_file)
+            # Output file base name
+            annotation_file = os.path.join(annotation_path, sequence_file.strip(".fasta"))
 
+            # Submit the task (simply replace it with existing function).
+            # interpro_annotation(sequence_path, annotation_file)
+            future = executor.submit(interpro_annotation, sequence_path, annotation_file)
+            tasks.append(future)
 
+        # Output in order of completion
+        for f in as_completed(tasks):
+            result = f.result()
+            print(f"[InterPro Done] {result}")
 
     # old version
     """for sequence_file in sequence_files:
         sequence_path = f"{protein_path}/{sequence_file}"
         annotation_file = f"{annotation_path}/{genomic_region}_protein"
         annotation_file = interpro_annotation(sequence_path, annotation_file)
-        # annotation_file = f"{annotation_file}.tsv""""
-
-    return candidate_dict
+        # annotation_file = f"{annotation_file}.tsv" """
 
 def load_interpro(interpro_file):
     columns = [
@@ -658,8 +680,8 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
         genomic_region = annotation_data.split("_")[0]
 
         # test
-        if not genomic_region == "g5348.t1-g5349.t1":
-            continue
+        #if not genomic_region == "g5348.t1-g5349.t1":
+            #continue
 
         region_info = candidate_dict[genomic_region]
         for key, value in region_info.items():
@@ -684,6 +706,7 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             annotation_files.append(all_info)
             continue
 
+        #transform interpro info to dict
         interpro_dict = interpro_data_dict(interpro_data)
 
         for assembly, info in region_info.items():
@@ -724,7 +747,8 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             }
             annotation_files.append(all_info)
 
-    print(annotation_files[1])
+    for annotation in annotation_files[:6]:
+        print(annotation)
 
     # Create a DataFrame (keys automatically become column headers)
     df = pd.DataFrame(annotation_files)
@@ -751,25 +775,36 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
 
     print(f"Final candidate data (genes) saved to: {output_file}")
 
+def analysis_interpro(comparison_data_path, transformed_data_path, sequence_path, protein_path, high_threshold,
+                                           basic_threshold, ratio_threhold, annotation_path, excel_file, final_output):
+    # transform the data of clinker results
+    transform_clinker_results(comparison_data_path, transformed_data_path)
+    # extract sequences and prepare annotation using interpro
+    candidate_dict = extract_all_sequences(transformed_data_path, sequence_path, protein_path, high_threshold,
+                                           basic_threshold, ratio_threhold)
+    interpro_all_sequences(protein_path, annotation_path)
+
+    # read the dictionary of gene id
+    id_dict = build_region_to_genes(excel_file)
+
+    # load annotation results and generate output
+    output_annotation_results(candidate_dict, annotation_path, id_dict, final_output)
+
 
 if __name__ == "__main__":
     # Convert to DataFrame
     # data of MAT1-2-4
-    #species = "aspergillus_fumigatus"
-    species = "aspergillus_oryzae"
+    species = "aspergillus_fumigatus"
+    #species = "aspergillus_oryzae"
     main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
     sequence_path = f"{main_path}/extract_sequences/clinker_interpro"
     result_path = f"{main_path}/results"
-
     comparison_data_path = f"{result_path}/clinker_comparison"
     transformed_data_path = f"{result_path}/clinker_comparison/transformed_data"
-    os.makedirs(transformed_data_path, exist_ok=True)
-    transform_clinker_results(comparison_data_path, transformed_data_path)
-
     protein_path = f"{sequence_path}/protein_extraction"
-    os.makedirs(protein_path, exist_ok=True)
     annotation_path = f"{protein_path}/interpro_annotation"
-    os.makedirs(annotation_path, exist_ok=True)
+    excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
+    final_output = f"{result_path}/interpro_annotation.xlsx"
 
     #similarity
     high_threshold = 0.85
@@ -778,16 +813,8 @@ if __name__ == "__main__":
     # query the upstream reference gene.
     ratio_threhold = 0.6
 
-    # extract sequences and prepare annotation using interpro
-    candidate_dict = analyze_all_region(transformed_data_path, sequence_path, protein_path, annotation_path, high_threshold, basic_threshold, ratio_threhold)
-
-    excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
-    id_dict= build_region_to_genes(excel_file)
-
-    # load annotation results and generate output
-    final_output = f"{result_path}/interpro_annotation.xlsx"
-    output_annotation_results(candidate_dict, annotation_path, id_dict, final_output)
-
+    analysis_interpro(comparison_data_path, transformed_data_path, sequence_path, protein_path, high_threshold,
+                      basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
 
 
 

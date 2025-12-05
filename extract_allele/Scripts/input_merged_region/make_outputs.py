@@ -223,12 +223,12 @@ def extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_
     for summary in candidate_data_summary:  # the summary information of each candidate gene
         region_name = summary["region_name"]
 
-        if region_name not in extracted_sequences.keys():
+        # not include these genomes
+        if region_name in extracted_sequences.keys():
             continue
 
         region_extracted = extracted_sequences[region_name]
 
-        # not include these genomes
         ref_extracted = region_extracted["ref_allele"]
         diver_extracted = region_extracted["diver_allele"]
 

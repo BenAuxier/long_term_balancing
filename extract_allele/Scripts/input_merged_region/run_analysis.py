@@ -85,10 +85,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    """"""
+    """
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
-
+    """
 
     # load annotation data from gff annotation
     annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -112,14 +112,13 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
-    """"""
+    """
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
-    
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-
+    """
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
@@ -160,6 +159,9 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
 
 
+    ######################################################################################
+    #interpro
+    from load_clinker_csv import analysis_interpro
 
 
 
