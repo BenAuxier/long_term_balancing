@@ -14,11 +14,8 @@ def run_clinker_visualization(sequence_path, clinker_output_path, minimal_simila
            - Identify valid GFF3 files (non-empty and with content beyond headers).
            - If >=2 valid files exist, run Clinker and save the HTML plot to the output folder.
     """
-    output_dir_html = f"{clinker_output_path}/html"
-    output_dir_data = f"{clinker_output_path}/data"
-
+    output_dir_html = clinker_output_path
     os.makedirs(output_dir_html, exist_ok=True)
-    os.makedirs(output_dir_data, exist_ok=True)
 
     # Traverse each subdirectory under sequence_path
     for gff_dir in os.listdir(sequence_path):
@@ -57,7 +54,7 @@ def run_clinker_visualization(sequence_path, clinker_output_path, minimal_simila
 
         print(f"🧬 Running Clinker on {len(gff_files)} valid GFF3 files...")
 
-        cmd = ["clinker", "--force", *gff_files, "-p", output_html, "-o", output_data, "-i", minimal_similarity]
+        cmd = ["clinker", "--force", *gff_files, "-p", output_html, "-i", minimal_similarity]
 
         try:
             subprocess.run(cmd, check=True)

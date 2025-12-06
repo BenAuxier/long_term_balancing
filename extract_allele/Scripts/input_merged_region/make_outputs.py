@@ -223,10 +223,6 @@ def extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_
     for summary in candidate_data_summary:  # the summary information of each candidate gene
         region_name = summary["region_name"]
 
-        # not include these genomes
-        if region_name in extracted_sequences.keys():
-            continue
-
         region_extracted = extracted_sequences[region_name]
 
         ref_extracted = region_extracted["ref_allele"]
@@ -236,7 +232,7 @@ def extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_
         diver_allele_info = summary["up_down_loci"]["diver_up_down_loci"]
 
         ref_extract = extract_region_seq(ref_allele_info, region_name, "ref_allele", assembly_dir, output_path, extend,
-                                         assembly_num,ref_extracted)
+                                         assembly_num, ref_extracted)
         diver_extract = extract_region_seq(diver_allele_info, region_name, "diver_allele", assembly_dir, output_path,
                                           extend, assembly_num,diver_extracted)
 
@@ -537,6 +533,7 @@ def extract_candidates(candidate_data_summary, output_file, candidate_data, geno
     # find and save final candidate genes and related information
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num,
                                              annotation_sorted, CDS_dict)
+
     results_path = save_final_candidates(final_candidates, output_file)
 
     return results_path
@@ -663,7 +660,7 @@ def extract_sequences_interpro(sequence_interpro, candidate_data_summary, sequen
     extract_sequence_interpro(extracted_sequences, assembly_dir, candidate_data_summary, sequence_interpro, extend, assembly_num)
 
     # make AUGUSTUS annotation
-    annotate_file_path(sequence_path, augustus_species, "on")
+    annotate_file_path(sequence_interpro, augustus_species, "on")
 
     #copy other previously extracted sequences and annotations to filepath
     copy_sequences(sequence_path, sequence_interpro)

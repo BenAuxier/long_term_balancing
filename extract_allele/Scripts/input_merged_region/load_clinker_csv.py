@@ -799,6 +799,7 @@ if __name__ == "__main__":
     main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
     sequence_path = f"{main_path}/extract_sequences/clinker_interpro"
     result_path = f"{main_path}/results"
+
     comparison_data_path = f"{result_path}/clinker_comparison"
     transformed_data_path = f"{result_path}/clinker_comparison/transformed_data"
     protein_path = f"{sequence_path}/protein_extraction"

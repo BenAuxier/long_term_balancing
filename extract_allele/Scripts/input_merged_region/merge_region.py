@@ -61,7 +61,9 @@ def process_data_old(input_file,ID_label = "locus_tag"):
             row_new["id"] = row.get(ID_label, ".")
 
             gene_data.append(row_new)
+
     return gene_data
+
 
 def process_data_augustus(input_file,ID_label = "locus_tag"):
     """

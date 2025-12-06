@@ -123,7 +123,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
 
-    ## save final candidate genes to an excel file
+    ## save final candidate genes to an Excel file
     print("saving candidate genes")
     results_path = f"{main_path}/results"
     result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
@@ -133,44 +133,52 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     #######################################################################
     ## extract sequences for clinker visualization
     print("saving candidate genes")
-    sequence_path = f"{main_path}/extract_sequences/clinker_visualization"
+    sequence_visualization = f"{main_path}/extract_sequences/clinker_visualization"
     clinker_output_path = f"{results_path}/clinker_results"
     sequence_interpro = f"{main_path}/extract_sequences/clinker_interpro"
     clinker_data_path = f"{results_path}/clinker_comparison"
 
     """"""
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
-                    sequence_path, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
+                    sequence_visualization, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
-    run_clinker_visualization(sequence_path, clinker_output_path, similarity_visualization)
+    run_clinker_visualization(sequence_visualization, clinker_output_path, similarity_visualization)
 
     #####################################################################################
     additional_assembly = assembly_num_interpro - assembly_num
     ## extract sequences for interpro analysis
     extract_sequences_interpro(sequence_interpro, candidate_data_summary,
-                               sequence_path, extend, assembly_dir,
+                               sequence_visualization, extend, assembly_dir,
                                additional_assembly, augustus_species)
 
     # run clinker for comparison data
     run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
 
-
-
-
     ######################################################################################
     #interpro
     from load_clinker_csv import analysis_interpro
+    interpro_analysis_path = f"{main_path}/interpro_analysis"
 
+    comparison_data_path = f"{interpro_analysis_path}/clinker_comparison"
+    transformed_data_path = f"{interpro_analysis_path}/transformed_clinker_data"
+    protein_path = f"{sequence_visualization}/protein_extraction"
+    annotation_path = f"{protein_path}/interpro_annotation"
+    excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
+    final_output = f"{results_path}/interpro_annotation.xlsx"
 
+    # similarity
+    high_threshold = 0.85
+    basic_threshold = 0.4
+    low_threshold = 0.6
+    # query the upstream reference gene.
+    ratio_threhold = 0.6
 
-
+    analysis_interpro(comparison_data_path, transformed_data_path, sequence_visualization, protein_path, high_threshold,
+                      basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
 
     """
-    
-    
-    
     # align sequence onto reference sequence to doublecheck and debug
     realign_output_path = f"{results_path}/sequence_alignments"
     annotate_file_path(sequence_path, realign_output_path)
