@@ -190,7 +190,7 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag",keep_type = "CDS"):
 
     return ID_dict
 
-def load_annotation_reference(gff_path, ID_label, type_annotation):
+def load_annotation_refseq(gff_path, ID_label, type_annotation):
     annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
     annotation_sorted_dict = read_gff_dict(annotation_sorted)
     return annotation_sorted, annotation_sorted_dict

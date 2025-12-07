@@ -463,7 +463,7 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
             candidate_end = row["end"]
 
             if candidate_seq == region_seq:
-                if (region_start <= candidate_start <= region_end) and (region_start <= candidate_end <= region_end):
+                if (region_start <= candidate_start <= region_end) or (region_start <= candidate_end <= region_end):
 
                     genes_included, CDS_included = find_reference_gene(annotation_sorted, candidate_seq,
                                                          candidate_start,candidate_end, CDS_dict)

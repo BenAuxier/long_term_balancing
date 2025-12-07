@@ -11,7 +11,7 @@ from merge_region import process_merging
 from merge_region import process_data_augustus
 from load_reference import count_gff_features
 from load_reference import create_ID_dictionary
-from load_reference import load_annotation_reference
+from load_reference import load_annotation_refseq
 from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
 from analyze_position import save_json
@@ -91,10 +91,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     """
 
     # load annotation data from gff annotation
-    annotation_sorted, annotation_sorted_dict = load_annotation_reference(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
-    annotation_sorted_augustus, annotation_sorted_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label, type_annotation_augustus)
+    annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
+    annotation_augustus, annotation_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label, type_annotation_augustus)
 
-    #print(annotation_sorted)
+    #print(annotation_refseq)
     CDS_dict = False
     # dictionary between locus_tag and CDS (XM) ID
     CDS_dict = create_ID_dictionary(gff_refseq, ID_ref_label, "CDS")
@@ -105,7 +105,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("merging candidate data")
     candidate_data, candidate_merge = process_merging(gene_region_depth, ID_augustus_label, lower_limit, upper_limit,
-                                                    annotation_sorted_dict_augustus, min_length_gene, min_overlap)
+                                                    annotation_dict_augustus, min_length_gene, min_overlap)
 
     #test
     #candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
@@ -113,7 +113,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
     """
-    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_sorted_augustus, gene_depth_data,
+    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
@@ -128,7 +128,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     results_path = f"{main_path}/results"
     result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
     extract_candidates(candidate_data_summary, result_file, candidate_data,
-                       genome_num,annotation_sorted, CDS_dict)
+                       genome_num,annotation_refseq, CDS_dict)
 
     #######################################################################
     ## extract sequences for clinker visualization
