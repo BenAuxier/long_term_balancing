@@ -8,6 +8,78 @@ from load_reference import read_gff
 from load_reference import read_gff_augustus
 from analyze_position import random_select_assembly
 
+#################################################################
+
+def find_region_gene(candidate_data_summary, annotation_refseq, annotation_augustus, region_output_file, refseq_candidate_file):
+    """
+
+    :param candidate_data_summary:
+
+    [{
+        "region_name": name,
+        "candidate_data": candidate region, # information of this candidate, {seq: [merged_info1, ...], ...}
+        "position_info": up_down_locations, # find upstream and downstream positions, dict
+        "up_down_loci": all_up_down_loci, # the selected locations
+    }, ......]
+
+    [{"region_name": candidate["region_name"],
+     "position_info": up_down_locations,
+     "up_down_loci": all_up_down_loci,
+    },...]
+    :param annotation_refseq: {seq_ID: [row_dict, ...]}
+    :param annotation_augustus: {seq_ID: [row_dict, ...]}
+    :param output_path:
+    :return:
+    """
+    summary_genes = []
+    all_refseq_genes = []
+    for summary in candidate_data_summary:
+        region_name = summary["region_name"]
+        region_info = summary["position_info"]["position"]
+        region_seq = region_info["seq_ID"]
+        region_start = region_info["start"]
+        region_end = region_info["end"]
+
+        annotation_refseq_seq = annotation_refseq[region_seq]
+        annotation_augustus_seq = annotation_augustus[region_seq]
+
+        refseq_gene = []
+        augustus_gene = []
+
+        for row in annotation_refseq_seq:
+            candidate_start = row["start"]
+            candidate_end = row["end"]
+            candidate_id = row["id"]
+
+            if (region_start <= candidate_start <= region_end) or (region_start <= candidate_end <= region_end):
+                refseq_gene.append(candidate_id)
+                all_refseq_genes.extend(refseq_gene)
+
+        for row in annotation_augustus_seq:
+            candidate_start = row["start"]
+            candidate_end = row["end"]
+            candidate_id = row["id"]
+
+            if (region_start <= candidate_start <= region_end) or (region_start <= candidate_end <= region_end):
+                augustus_gene.append(candidate_id)
+
+        summary_genes.append([region_name, refseq_gene, augustus_gene])
+
+    with open(region_output_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["genomic_region", "RefSeq_genes", "Augustus_genes"])
+        writer.writerows(summary_genes)
+    print(f"Genomic region file written to {region_output_file}")
+
+    all_refseq_genes = list(set(all_refseq_genes))
+    with open(refseq_candidate_file, "w", newline="", encoding="utf-8") as f:
+        for item in all_refseq_genes:
+            f.write(str(item) + "\n")
+
+    print(f"Refseq candidate genes written to {refseq_candidate_file}")
+
+    return summary_genes
+
 ###############################################################
 # augustus_annotation
 def run_augustus_on_fasta(fa_path, augustus_species, gff3_status = "off", suffix = ""):

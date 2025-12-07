@@ -223,6 +223,9 @@ def merge_candidate_position(candidate_data_seq, annotation_dict):
 
     return candidate_merge
 
+
+
+
 def process_merging(gene_region_depth, ID_augustus_label,lower_limit, upper_limit,annotation_sorted_dict, minimal_length, min_overlap):
     """
     merge the genomic regions

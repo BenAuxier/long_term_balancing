@@ -16,6 +16,7 @@ from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
 from analyze_position import save_json
 from analyze_position import load_json
+from make_outputs import find_region_gene
 from make_outputs import extract_candidates
 from make_outputs import extract_sequences
 from make_outputs import extract_sequences_interpro
@@ -85,10 +86,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    """
+    """"""
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
-    """
+
 
     # load annotation data from gff annotation
     annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -112,21 +113,27 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
-    """
+    """"""
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-    """
+
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
 
+    # find genes within the genomic regions
+    results_path = f"{main_path}/results"
+    region_output_file = f"{results_path}/genomic_region_genes.csv"
+    refseq_candidate_file = f"{results_path}/all_candidate_genes.txt"
+    summary_genes = find_region_gene(candidate_data_summary, annotation_refseq, annotation_augustus, region_output_file,
+                                     refseq_candidate_file)
+
     ## save final candidate genes to an Excel file
     print("saving candidate genes")
-    results_path = f"{main_path}/results"
-    result_file = f"{main_path}/results/{species}_final_candidates.xlsx"
+    result_file = f"{results_path}/{species}_final_candidates.xlsx"
     extract_candidates(candidate_data_summary, result_file, candidate_data,
                        genome_num,annotation_refseq, CDS_dict)
 

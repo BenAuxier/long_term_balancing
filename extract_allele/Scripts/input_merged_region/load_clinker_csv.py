@@ -513,6 +513,7 @@ def interpro_all_sequences(protein_path, annotation_path):
     """
     # perform interpro annotation for each candidate sequence
     os.makedirs(annotation_path, exist_ok=True)
+
     sequence_files = os.listdir(protein_path)
     tasks = []
     with ProcessPoolExecutor(max_workers=4) as executor:
