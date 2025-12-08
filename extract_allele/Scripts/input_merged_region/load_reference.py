@@ -2,6 +2,7 @@ import csv
 from collections import defaultdict
 
 
+
 def count_gff_features(gff_file):
     """
     Count the occurrences of each feature type (3rd column) in a GFF file.

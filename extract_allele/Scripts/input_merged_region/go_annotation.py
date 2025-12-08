@@ -123,6 +123,36 @@ def extract_go_terms(eggnog_annotation, basic_name, go_basic_obo):
 
     return True
 
+def find_background_genes(gff_path, type_annotation_ref, ID_ref_label, background_output):
+    background_gene = []
+    with open(gff_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter="\t", fieldnames=[
+            "seq_ID", "source", "type", "start", "end", "score", "strand", "phase", "attributes"
+        ])
+        for row in reader:
+            if row["seq_ID"].startswith("#"):
+                continue  # skip header/comment lines
+            if row["type"] != type_annotation_ref:
+                continue
+
+            # parse attributes (GFF3 format: key=value;key=value;...)
+            attr_dict = {}
+            for attr in row["attributes"].split(";"):
+                if attr.strip() == "":
+                    continue
+                if "=" in attr:
+                    key, value = attr.strip().split("=", 1)
+                    row[key] = value
+
+            gene_id = row[ID_ref_label]
+            background_gene.append(gene_id)
+
+    background_gene = list(set(background_gene))
+    with open(background_output, "w") as out:
+        for gene in background_gene:
+            out.write(f"{gene}\n")
+
+    return background_gene
 
 
 if __name__ == "__main__":
@@ -133,6 +163,7 @@ if __name__ == "__main__":
     reference_genome = "GCF_000002655.1"  # genome annotation should be GCF version
     species = "aspergillus_fumigatus"
     ID_ref_label = "locus_tag"
+    type_annotation_ref = "mRNA"
 
     # file paths, including all input files
     base_path = "/lustre/BIF/nobackup/leng010/test"
@@ -168,8 +199,10 @@ if __name__ == "__main__":
     # download from http://purl.obolibrary.org/obo/go.obo
     go_basic_obo = "/lustre/BIF/nobackup/leng010/dataset/go_term/go.obo"
 
-    extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
+    #extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
 
+    background_output = f"{results_path}/all_genes.txt"
+    find_background_genes(gff_refseq, type_annotation_ref, ID_ref_label, background_output)
 
 
 

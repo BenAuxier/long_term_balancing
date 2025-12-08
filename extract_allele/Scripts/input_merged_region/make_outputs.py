@@ -80,6 +80,8 @@ def find_region_gene(candidate_data_summary, annotation_refseq, annotation_augus
 
     return summary_genes
 
+
+
 ###############################################################
 # augustus_annotation
 def run_augustus_on_fasta(fa_path, augustus_species, gff3_status = "off", suffix = ""):
