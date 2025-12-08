@@ -131,7 +131,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # find genes within the genomic regions
     results_path = f"{main_path}/results"
     region_output_file = f"{results_path}/genomic_region_genes.csv"
-    refseq_candidate_file = f"{results_path}/all_candidate_genes.txt"
+    # candidate genes output
+    go_path = f"{main_path}/go_analysis"
+    os.makedirs(go_path, exist_ok=True)
+    refseq_candidate_file = f"{go_path}/all_candidate_genes.txt"
 
     summary_genes = find_region_gene(candidate_data_summary, annotation_refseq, annotation_augustus, region_output_file,
                                      refseq_candidate_file)

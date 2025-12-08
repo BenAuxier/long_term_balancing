@@ -161,8 +161,12 @@ if __name__ == "__main__":
     #############################################################
     # path to specific species
     # basic information
-    reference_genome = "GCF_000002655.1"  # genome annotation should be GCF version
-    species = "aspergillus_fumigatus"
+    #reference_genome = "GCF_000002655.1"  # genome annotation should be GCF version
+    #species = "aspergillus_fumigatus"
+
+    reference_genome = "GCF_000184455.2"  # genome annotation should be GCF version (RefSeq)
+    species = "aspergillus_oryzae"  # the species
+
     ID_ref_label = "locus_tag"
     type_annotation_ref = "mRNA"
 
@@ -178,9 +182,10 @@ if __name__ == "__main__":
     refseq_candidate_file = f"{results_path}/all_candidate_genes.txt"
 
     #####################################################################
+
     # dictionary between locus_tag and CDS (XM) ID
     id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
-    #create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
+    create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
     # optional: "protein_id", "gene_id", "mrna_id"
     mrna_dict = csv_to_dict(id_dict_file, "mrna_id", "gene_id")
 
@@ -190,7 +195,7 @@ if __name__ == "__main__":
     proteins_file = f"{go_path}/{reference_genome}_all_proteins.fasta"
     annotation_file = f"{go_path}/{reference_genome}_annotation"
 
-    #go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, annotation_file, mrna_dict)
+    go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, annotation_file, mrna_dict)
 
     # get the result of eggnog annotation
     eggnog_annotation = f"{go_path}/{reference_genome}_annotation.emapper.annotations"
@@ -200,9 +205,9 @@ if __name__ == "__main__":
     # download from http://purl.obolibrary.org/obo/go.obo
     go_basic_obo = "/lustre/BIF/nobackup/leng010/dataset/go_term/go.obo"
 
-    #extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
+    extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
 
-    background_output = f"{results_path}/all_genes.txt"
+    background_output = f"{go_path}/background_genes.txt"
     find_background_genes(gff_refseq, type_annotation_ref, ID_ref_label, background_output)
 
 
