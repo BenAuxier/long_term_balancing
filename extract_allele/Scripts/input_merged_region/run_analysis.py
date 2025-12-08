@@ -11,6 +11,7 @@ from merge_region import process_merging
 from merge_region import process_data_augustus
 from load_reference import count_gff_features
 from load_reference import create_ID_dictionary
+from load_reference import csv_to_dict
 from load_reference import load_annotation_refseq
 from load_reference import load_annotation_augustus
 from analyze_position import analyze_all_candidate_position
@@ -98,7 +99,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     #print(annotation_refseq)
     CDS_dict = False
     # dictionary between locus_tag and CDS (XM) ID
-    CDS_dict = create_ID_dictionary(gff_refseq, ID_ref_label, "CDS")
+    id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
+    create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
+    # optional: "protein_id", "gene_id", "mrna_id"
+    CDS_dict = csv_to_dict(id_dict_file, "protein_id", "gene_id")
 
     # processes the input candidate mRNAs
     print("loading candidate data")

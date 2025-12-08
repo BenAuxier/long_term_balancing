@@ -97,6 +97,8 @@ def read_gff(gff_path, ID_label = "locus_tag", keep_type=None):
 
     return annotation_sorted
 
+
+
 def read_gff_augustus(gff_path, ID_label = "locus_tag", keep_type=None):
     """
         Read an augustus GFF file and organize it by seq_ID.
@@ -163,14 +165,14 @@ def read_gff_dict(annotation_sorted):
 
     return annotation_dict
 
-def create_ID_dictionary(gff_path, ID_label = "locus_tag",keep_type = "CDS"):
+def create_ID_dictionary(gff_path, output_csv, ID_label = "locus_tag", keep_type = "CDS"):
     """
     Create ID dictionary between XP_ and other such as XM_ ID of CDS.
     Used to transfer the ID to XP, to label them in clinker
     :param gff_path:
     :return:
     """
-    ID_dict = {}
+    ID_list = []
 
     ID_annotation = read_gff(gff_path, ID_label, keep_type)
 
@@ -181,14 +183,37 @@ def create_ID_dictionary(gff_path, ID_label = "locus_tag",keep_type = "CDS"):
             except KeyError:
                 continue
 
-            if ID_label == "locus_tag":
-                using_ID = annotation["locus_tag"]
-            elif ID_label == "transcript_id":
-                using_ID = annotation["Parent"][4:].split('-')[-1]
+            gene_id = annotation[ID_label]
+            mrna_id = annotation["Parent"][4:].split('-')[-1]
 
-            ID_dict[using_ID] = protein_id
+            ID_list.append([protein_id, gene_id, mrna_id])
 
-    return ID_dict
+    header = ["protein_id", "gene_id", "mrna_id"]
+    # save as csv
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)  # 写入表头
+        writer.writerows(ID_list)  # 写入数据
+
+    return True
+
+def csv_to_dict(file_path, key_header, value_header):
+    """
+    Convert two columns from a CSV file into a dictionary.
+    :param file_path: CSV file path
+    :param key_header: optional: "protein_id", "gene_id", "mrna_id"
+    :param value_header: optional: "protein_id", "gene_id", "mrna_id"
+    :return: dict
+    """
+    result = {}
+    with open(file_path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            key = row[key_header]
+            value = row[value_header]
+            result[key] = value
+
+    return result
 
 def load_annotation_refseq(gff_path, ID_label, type_annotation):
     annotation_sorted = read_gff(gff_path, ID_label, type_annotation)
