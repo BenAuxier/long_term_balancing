@@ -204,7 +204,7 @@ def csv_to_dict(file_path, key_header, value_header):
     :param file_path: CSV file path
     :param key_header: optional: "protein_id", "gene_id", "mrna_id"
     :param value_header: optional: "protein_id", "gene_id", "mrna_id"
-    :return: dict
+    :return: dict file
     """
     result = {}
     with open(file_path, newline='', encoding='utf-8') as f:

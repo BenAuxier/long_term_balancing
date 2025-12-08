@@ -2,6 +2,7 @@ import subprocess
 import os
 import csv
 from collections import defaultdict
+
 from load_reference import create_ID_dictionary
 from load_reference import csv_to_dict
 from load_clinker_csv import interpro_annotation
