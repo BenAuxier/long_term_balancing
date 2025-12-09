@@ -294,13 +294,20 @@ def analyze_ref_gene(genomic_region, upstream_gene, downstream_gene, df_ref_ref,
 
 
 def find_genome_assembly_path(file_dir, genome, suffix):
+    """
+
+    :param file_dir:
+    :param genome:
+    :param suffix:
+    :return:
+    """
     # search for the file including genome accession in its name
     assembly_pattern = os.path.join(file_dir, f"*{genome}*{suffix}")
     matches = glob.glob(assembly_pattern)
     if not matches:
         warning = f"Warning: No genome assembly found for {genome}"
         print(warning)
-        # return warning
+        return False
     genome_assembly_path = matches[0]
     return genome_assembly_path
 
@@ -323,6 +330,9 @@ def extract_aminoacid(annotation_dir, gene_info, output_file):
         candidate_genes.extend([gene])
 
     gff_path = find_genome_assembly_path(annotation_dir, assembly_id, ".gff3")
+
+    if not gff_path:
+        return False
 
     for gene in candidate_genes:
         start_header = f"start gene {gene}"
@@ -778,11 +788,14 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
 
 def analysis_interpro(comparison_data_path, transformed_data_path, sequence_path, protein_path, high_threshold,
                                            basic_threshold, ratio_threhold, annotation_path, excel_file, final_output):
+
     # transform the data of clinker results
     transform_clinker_results(comparison_data_path, transformed_data_path)
+
     # extract sequences and prepare annotation using interpro
     candidate_dict = extract_all_sequences(transformed_data_path, sequence_path, protein_path, high_threshold,
                                            basic_threshold, ratio_threhold)
+
     interpro_all_sequences(protein_path, annotation_path)
 
     # read the dictionary of gene id

@@ -14,8 +14,7 @@ def run_clinker_visualization(sequence_path, clinker_output_path, minimal_simila
            - Identify valid GFF3 files (non-empty and with content beyond headers).
            - If >=2 valid files exist, run Clinker and save the HTML plot to the output folder.
     """
-    output_dir_html = clinker_output_path
-    os.makedirs(output_dir_html, exist_ok=True)
+    os.makedirs(clinker_output_path, exist_ok=True)
 
     # Traverse each subdirectory under sequence_path
     for gff_dir in os.listdir(sequence_path):
@@ -48,9 +47,7 @@ def run_clinker_visualization(sequence_path, clinker_output_path, minimal_simila
 
         # Run clinker
         gene_name = os.path.basename(gff_dir_path)
-        output_html = os.path.join(output_dir_html, f"{gene_name}_plot.html")
-
-        output_data = os.path.join(output_dir_data, f"{gene_name}_data.txt")
+        output_html = os.path.join(clinker_output_path, f"{gene_name}_plot.html")
 
         print(f"🧬 Running Clinker on {len(gff_files)} valid GFF3 files...")
 
@@ -58,11 +55,11 @@ def run_clinker_visualization(sequence_path, clinker_output_path, minimal_simila
 
         try:
             subprocess.run(cmd, check=True)
-            print(f"✅ Clinker analysis finished for {gff_dir_path}. Results saved to {output_html} and {output_data}.")
+            print(f"✅ Clinker analysis finished for {gff_dir_path}. Results saved to {output_html}.")
         except subprocess.CalledProcessError as e:
             print(f"⚠️ Error running Clinker on {gff_dir_path}: {e}")
 
-    return output_html, output_data
+    return True
 
 
 def run_clinker_data(sequence_path, output_path, minimal_similarity = "0"):

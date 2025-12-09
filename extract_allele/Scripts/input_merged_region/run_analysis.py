@@ -3,6 +3,7 @@ Extract the allele of each gene in multiple genomes
 
 """
 import os
+
 from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import calculate_genome_number
 from prepare_alignment import extract_annotations
@@ -24,6 +25,7 @@ from make_outputs import extract_sequences_interpro
 from visualization_clinker import run_clinker_visualization
 from visualization_clinker import run_clinker_data
 from doublecheck_alignment import annotate_file_path
+from load_clinker_csv import analysis_interpro
 
 def run_whole_analysis(reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus, ID_ref_label, ID_augustus_label, key_words, base_path):
     # assembly_list, this file need to create manually
@@ -54,6 +56,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
     gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
     """
+
     # verify some basic details
     # check reference annotation .gff file
     count_gff_features(gff_augustus)
@@ -77,20 +80,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     transfer_id = True  # whether transfer genomic region name to CDS ID
 
     min_length_region = 200 # the minimal length of the genomic region merged in "calculate_depth_all"
-    base_interval = "2" # the interval between merged base
+    base_interval = "2" # the max interval between merged base
     min_overlap = 100 # the minimal length a candidate gene overlap with balancing selection region
 
-    similarity_visualization = "0.3"
+    identity_visualization = "0.3" # the default identity threshold in visualization
 
     ##########################################################################
 
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    """"""
+    """
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
-
+    """
 
     # load annotation data from gff annotation
     annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -102,7 +105,9 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
     create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
     # optional: "protein_id", "gene_id", "mrna_id"
-    CDS_dict = csv_to_dict(id_dict_file, "protein_id", "gene_id")
+    CDS_dict = csv_to_dict(id_dict_file, "gene_id", "protein_id")
+    # optional: "protein_id", "gene_id", "mrna_id"
+    mrna_dict = csv_to_dict(id_dict_file, "mrna_id", "gene_id")
 
     # processes the input candidate mRNAs
     print("loading candidate data")
@@ -117,13 +122,13 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
-    """"""
+    """
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-
+    """
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
@@ -151,32 +156,19 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     sequence_visualization = f"{main_path}/extract_sequences/clinker_visualization"
     clinker_output_path = f"{results_path}/clinker_results"
     sequence_interpro = f"{main_path}/extract_sequences/clinker_interpro"
-    clinker_data_path = f"{results_path}/clinker_comparison"
 
-    """"""
+    """
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
                     sequence_visualization, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
-    run_clinker_visualization(sequence_visualization, clinker_output_path, similarity_visualization)
-
-    #####################################################################################
-    additional_assembly = assembly_num_interpro - assembly_num
-    ## extract sequences for interpro analysis
-    extract_sequences_interpro(sequence_interpro, candidate_data_summary,
-                               sequence_visualization, extend, assembly_dir,
-                               additional_assembly, augustus_species)
-
-    # run clinker for comparison data
-    run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
-
+    run_clinker_visualization(sequence_visualization, clinker_output_path, identity_visualization)
+    """
     ######################################################################################
-    #interpro
-    from load_clinker_csv import analysis_interpro
+    # interpro
     interpro_analysis_path = f"{main_path}/interpro_analysis"
-
-    comparison_data_path = f"{interpro_analysis_path}/clinker_comparison"
+    clinker_data_path = f"{interpro_analysis_path}/clinker_comparison"
     transformed_data_path = f"{interpro_analysis_path}/transformed_clinker_data"
     protein_path = f"{sequence_visualization}/protein_extraction"
     annotation_path = f"{protein_path}/interpro_annotation"
@@ -189,16 +181,21 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     low_threshold = 0.6
     # query the upstream reference gene.
     ratio_threhold = 0.6
+    #####################################################################################
 
-    analysis_interpro(comparison_data_path, transformed_data_path, sequence_visualization, protein_path, high_threshold,
+    additional_assembly = assembly_num_interpro - assembly_num
+    """
+    ## extract sequences for interpro analysis
+    extract_sequences_interpro(sequence_interpro, candidate_data_summary,
+                               sequence_visualization, extend, assembly_dir,
+                               additional_assembly, augustus_species)
+    
+    # run clinker for comparison data
+    run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
+    """
+    analysis_interpro(clinker_data_path, transformed_data_path, sequence_interpro, protein_path, high_threshold,
                       basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
 
-    """
-    # align sequence onto reference sequence to doublecheck and debug
-    realign_output_path = f"{results_path}/sequence_alignments"
-    annotate_file_path(sequence_path, realign_output_path)
-
-    print("finished")"""
 
 if __name__ == "__main__":
     # information
@@ -212,6 +209,12 @@ if __name__ == "__main__":
 
     # file paths, including all input files
     base_path = "/lustre/BIF/nobackup/leng010/test"
+
+    """
+    # align sequence onto reference sequence to doublecheck and debug
+    realign_output_path = f"{results_path}/sequence_alignments"
+    annotate_file_path(sequence_path, realign_output_path)
+    """
 
 
 

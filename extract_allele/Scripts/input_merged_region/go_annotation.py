@@ -2,8 +2,6 @@ import subprocess
 import os
 import csv
 from collections import defaultdict
-
-from load_reference import create_ID_dictionary
 from load_reference import csv_to_dict
 from load_clinker_csv import interpro_annotation
 
@@ -31,18 +29,17 @@ def go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, an
 
     # extract protein sequences for all genes in the genome
     cmd = ["gffread", gff_refseq, "-g", ref_assembly, "-y", proteins_file_raw]
-    #subprocess.run(cmd)
+    subprocess.run(cmd)
     print(f"Proteins are extracted from the genome {gff_refseq}")
 
     # rename the headers with gene_id
-    #rename_fasta_headers(proteins_file_raw, proteins_file, mrna_dict)
+    rename_fasta_headers(proteins_file_raw, proteins_file, mrna_dict)
 
     #make annotation with interpro
-    #annotation_interpro = f"{annotation_file}_interpro"
-    #interpro_annotation(proteins_file, annotation_interpro)
+    annotation_interpro = f"{annotation_file}_interpro"
+    interpro_annotation(proteins_file, annotation_interpro)
 
     # run eggnog to annotate files
-    #subprocess.run(["conda", "activate", "eggnog"])
     #have to run conda activate eggnog before running cmd
     eggnog_path = "emapper.py"
 
@@ -100,7 +97,6 @@ def extract_go_terms(eggnog_annotation, basic_name, go_basic_obo):
                     elif go_namespace[go] == "cellular_component":
                         gene2go_CC[gene].append(go)
 
-
     # save files
     with open(f"{basic_name}.tsv", "w") as out:
         for gene, gos in gene2go_all.items():
@@ -155,6 +151,30 @@ def find_background_genes(gff_path, type_annotation_ref, ID_ref_label, backgroun
 
     return background_gene
 
+def prepare_go_analysis(reference_genome, ID_ref_label, type_annotation_ref, ref_assembly,
+                        gff_refseq, go_path, id_dict_file):
+    #####################################################################
+    # dictionary between locus_tag and CDS (XM) ID
+    # optional: "protein_id", "gene_id", "mrna_id"
+    mrna_dict = csv_to_dict(id_dict_file, "mrna_id", "gene_id")
+
+    proteins_file_raw = f"{go_path}/{reference_genome}_raw.fasta"
+    proteins_file = f"{go_path}/{reference_genome}_all_proteins.fasta"
+    annotation_file = f"{go_path}/{reference_genome}_annotation"
+
+    # get the result of eggnog annotation
+    eggnog_annotation = f"{go_path}/{reference_genome}_annotation.emapper.annotations"
+    genetogo_path = f"{go_path}/gene2go"
+    os.makedirs(genetogo_path, exist_ok=True)
+    basic_name = f"{genetogo_path}/{reference_genome}_gene2go"
+    # download from http://purl.obolibrary.org/obo/go.obo
+    go_basic_obo = "/lustre/BIF/nobackup/leng010/dataset/go_term/go.obo"
+    background_output = f"{go_path}/background_genes.txt"
+
+    go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, annotation_file, mrna_dict)
+    extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
+    find_background_genes(gff_refseq, type_annotation_ref, ID_ref_label, background_output)
+
 
 if __name__ == "__main__":
 
@@ -177,38 +197,14 @@ if __name__ == "__main__":
     ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
     gff_refseq = f"{ref_path}/{reference_genome}_genomic.gff"
 
-    results_path = f"{main_path}/results"
-    region_output_file = f"{results_path}/genomic_region_genes.csv"
-    refseq_candidate_file = f"{results_path}/all_candidate_genes.txt"
-
-    #####################################################################
-
-    # dictionary between locus_tag and CDS (XM) ID
-    id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
-    create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
-    # optional: "protein_id", "gene_id", "mrna_id"
-    mrna_dict = csv_to_dict(id_dict_file, "mrna_id", "gene_id")
-
     go_path = f"{main_path}/go_analysis"
-    os.makedirs(go_path, exist_ok=True)
-    proteins_file_raw = f"{go_path}/{reference_genome}_raw.fasta"
-    proteins_file = f"{go_path}/{reference_genome}_all_proteins.fasta"
-    annotation_file = f"{go_path}/{reference_genome}_annotation"
+    id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
+    #######################################################################
 
-    go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, annotation_file, mrna_dict)
+    prepare_go_analysis(reference_genome, ID_ref_label, type_annotation_ref, ref_assembly,
+                                       gff_refseq, go_path, id_dict_file)
 
-    # get the result of eggnog annotation
-    eggnog_annotation = f"{go_path}/{reference_genome}_annotation.emapper.annotations"
-    genetogo_path = f"{go_path}/gene2go"
-    os.makedirs(genetogo_path, exist_ok=True)
-    basic_name = f"{genetogo_path}/{reference_genome}_gene2go"
-    # download from http://purl.obolibrary.org/obo/go.obo
-    go_basic_obo = "/lustre/BIF/nobackup/leng010/dataset/go_term/go.obo"
 
-    extract_go_terms(eggnog_annotation, basic_name, go_basic_obo)
-
-    background_output = f"{go_path}/background_genes.txt"
-    find_background_genes(gff_refseq, type_annotation_ref, ID_ref_label, background_output)
 
 
 
