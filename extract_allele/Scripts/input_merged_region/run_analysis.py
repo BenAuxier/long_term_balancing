@@ -48,14 +48,14 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
 
     ##########################################################################################
-    """
+    """"""
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, gff_refseq, bam_path,
                               bam_file, reference_genome, assembly_list, augustus_species)
     
     # filter the annotation with type_annotation
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
     gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
-    """
+
 
     # verify some basic details
     # check reference annotation .gff file
@@ -90,10 +90,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    """
+    """"""
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
-    """
+
 
     # load annotation data from gff annotation
     annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -122,19 +122,20 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
-    """
+    """"""
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-    """
+
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
 
     # find genes within the genomic regions
     results_path = f"{main_path}/results"
+    os.makedirs(results_path, exist_ok=True)
     region_output_file = f"{results_path}/genomic_region_genes.csv"
     # candidate genes output
     go_path = f"{main_path}/go_analysis"
@@ -157,14 +158,14 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     clinker_output_path = f"{results_path}/clinker_results"
     sequence_interpro = f"{main_path}/extract_sequences/clinker_interpro"
 
-    """
+    """"""
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
                     sequence_visualization, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
     
     # run clinker for visualization
     print("running clinker")
     run_clinker_visualization(sequence_visualization, clinker_output_path, identity_visualization)
-    """
+
     ######################################################################################
     # interpro
     interpro_analysis_path = f"{main_path}/interpro_analysis"
@@ -184,7 +185,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     #####################################################################################
 
     additional_assembly = assembly_num_interpro - assembly_num
-    """
+    """"""
     ## extract sequences for interpro analysis
     extract_sequences_interpro(sequence_interpro, candidate_data_summary,
                                sequence_visualization, extend, assembly_dir,
@@ -192,9 +193,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     
     # run clinker for comparison data
     run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
-    """
+
     analysis_interpro(clinker_data_path, transformed_data_path, sequence_interpro, protein_path, high_threshold,
                       basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
+
 
 
 if __name__ == "__main__":

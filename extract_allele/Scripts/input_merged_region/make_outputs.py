@@ -31,6 +31,10 @@ def find_region_gene(candidate_data_summary, annotation_refseq, annotation_augus
     :param output_path:
     :return:
     """
+    # check output path
+    os.makedirs(os.path.dirname(region_output_file), exist_ok=True)
+    os.makedirs(os.path.dirname(refseq_candidate_file), exist_ok=True)
+
     summary_genes = []
     all_refseq_genes = []
     for summary in candidate_data_summary:

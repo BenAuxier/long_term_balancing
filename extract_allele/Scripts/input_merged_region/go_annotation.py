@@ -187,6 +187,12 @@ if __name__ == "__main__":
     reference_genome = "GCF_000184455.2"  # genome annotation should be GCF version (RefSeq)
     species = "aspergillus_oryzae"  # the species
 
+    reference_genome = "GCF_011745365.1"  # genome annotation should be GCF version (RefSeq)
+    species = "cryphonectria_parastica"  # the species
+
+    reference_genome = "GCF_000002495.2"  # genome annotation should be GCF version (RefSeq)
+    species = "magnaporthe_grisea"  # the species
+
     ID_ref_label = "locus_tag"
     type_annotation_ref = "mRNA"
 
