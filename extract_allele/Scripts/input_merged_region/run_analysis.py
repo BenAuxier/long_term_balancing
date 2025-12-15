@@ -48,10 +48,11 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
 
     ##########################################################################################
-    """"""
+    """
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, gff_refseq, bam_path,
                               bam_file, reference_genome, assembly_list, augustus_species)
-    
+    """
+
     # filter the annotation with type_annotation
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
     gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
@@ -198,25 +199,81 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
                       basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
 
 
+import argparse
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Run whole genome annotation analysis"
+    )
+
     # information
-    reference_genome = "GCF_000184455.2"  # genome annotation should be GCF version (RefSeq)
-    species = "aspergillus_oryzae"  # the species
-    augustus_species = "aspergillus_oryzae"  # the reference species used in AUGUSTUS
+    parser.add_argument(
+        "--reference_genome",
+        required=True,
+        help="Reference genome accession (GCF version)"
+    )
+    parser.add_argument(
+        "--species",
+        required=True,
+        help="Species name"
+    )
+    parser.add_argument(
+        "--augustus_species",
+        required=True,
+        help="Augustus species name"
+    )
 
-    type_annotation_ref = "mRNA"  # type of annotation used in depth calculation, the third column
-    ID_label = "transcript_id"  # this is the key that the gene/mRNA id follows
-    key_words = None  # the keywords that have to be included in the annotation
+    parser.add_argument(
+        "--type_annotation_ref",
+        default="mRNA",
+        help="Annotation type for reference (3rd column in GFF)"
+    )
+    parser.add_argument(
+        "--type_annotation_augustus",
+        default="transcript",
+        help="Annotation type for Augustus (3rd column in GFF)"
+    )
 
-    # file paths, including all input files
-    base_path = "/lustre/BIF/nobackup/leng010/test"
+    parser.add_argument(
+        "--ID_ref_label",
+        default="locus_tag",
+        help="ID label key in reference GFF"
+    )
+    parser.add_argument(
+        "--ID_augustus_label",
+        default="gene_id",
+        help="ID label key in Augustus GFF"
+    )
 
-    """
-    # align sequence onto reference sequence to doublecheck and debug
-    realign_output_path = f"{results_path}/sequence_alignments"
-    annotate_file_path(sequence_path, realign_output_path)
-    """
+    parser.add_argument(
+        "--key_words",
+        nargs="*",
+        default=None,
+        help="Keywords that must be included in annotation (optional)"
+    )
+
+    # paths
+    parser.add_argument(
+        "--base_path",
+        required=True,
+        help="Base directory containing all input files"
+    )
+
+    args = parser.parse_args()
+
+    run_whole_analysis(
+        args.reference_genome,
+        args.species,
+        args.augustus_species,
+        args.type_annotation_ref,
+        args.type_annotation_augustus,
+        args.ID_ref_label,
+        args.ID_augustus_label,
+        args.key_words,
+        args.base_path
+    )
+
+
 
 
 

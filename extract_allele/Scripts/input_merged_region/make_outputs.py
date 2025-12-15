@@ -637,7 +637,8 @@ def extract_sequences(candidate_data_summary, reference_genome, ref_gff, ref_gff
     sequence_path = find_allele_sequence_inbetween(reference_genome, assembly_dir, candidate_data_summary, sequence_path, extend, assembly_num)
 
     #extract sequence from reference genome for Augustus annotation
-    extract_reference_seq_augustus(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
+    # seems not necessary if AUGUSTUS annotated reference is used
+    #extract_reference_seq_augustus(candidate_data_summary, reference_genome, ref_gff, sequence_path, extend, ref_assembly)
 
     # make AUGUSTUS annotation
     annotate_file_path(sequence_path, augustus_species,"on")

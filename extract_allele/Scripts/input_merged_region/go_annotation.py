@@ -38,7 +38,7 @@ def go_annotation(gff_refseq, ref_assembly, proteins_file_raw, proteins_file, an
 
     #make annotation with interpro
     annotation_interpro = f"{annotation_file}_interpro"
-    interpro_annotation(proteins_file, annotation_interpro)
+    #interpro_annotation(proteins_file, annotation_interpro)
 
     # run eggnog to annotate files
     #have to run conda activate eggnog before running cmd

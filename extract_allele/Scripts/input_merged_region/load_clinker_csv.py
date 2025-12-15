@@ -6,8 +6,6 @@ import subprocess
 import ast
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-
-
 def load_clinker_csv(file_path, output_path):
     data = []
     current_title = None
@@ -695,8 +693,6 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
             #continue
 
         region_info = candidate_dict[genomic_region]
-        for key, value in region_info.items():
-            print(key, value)
 
         # load analysis results
         interpro_data = load_interpro(annotation_file)
@@ -757,9 +753,6 @@ def output_annotation_results(candidate_dict, annotation_path, id_dict, output_f
                 "go_terms": list_to_pipe_string(go_info)
             }
             annotation_files.append(all_info)
-
-    for annotation in annotation_files[:6]:
-        print(annotation)
 
     # Create a DataFrame (keys automatically become column headers)
     df = pd.DataFrame(annotation_files)
