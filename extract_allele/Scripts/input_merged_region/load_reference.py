@@ -212,6 +212,8 @@ def csv_to_dict(file_path, key_header, value_header):
         for row in reader:
             key = row[key_header]
             value = row[value_header]
+            if not value:
+                value = "not_found"
             result[key] = value
 
     return result

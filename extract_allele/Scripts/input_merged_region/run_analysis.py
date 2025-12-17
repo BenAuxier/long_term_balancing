@@ -5,6 +5,7 @@ Extract the allele of each gene in multiple genomes
 import os
 
 from prepare_alignment import prepare_analyze_alignment
+from prepare_alignment import prepare_augustus_reference
 from prepare_alignment import calculate_genome_number
 from prepare_alignment import extract_annotations
 from depth_calculation import calculate_depth_all
@@ -50,9 +51,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ##########################################################################################
     """
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, gff_refseq, bam_path,
-                              bam_file, reference_genome, assembly_list, augustus_species)
+                              bam_file, reference_genome, assembly_list)
+    
+    prepare_augustus_reference(ref_assembly, augustus_species)
     """
-
     # filter the annotation with type_annotation
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
     gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
@@ -91,10 +93,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
-    """"""
+    """
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
-
+    """
 
     # load annotation data from gff annotation
     annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
@@ -107,6 +109,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     create_ID_dictionary(gff_refseq, id_dict_file, ID_ref_label, "CDS")
     # optional: "protein_id", "gene_id", "mrna_id"
     CDS_dict = csv_to_dict(id_dict_file, "gene_id", "protein_id")
+
     # optional: "protein_id", "gene_id", "mrna_id"
     mrna_dict = csv_to_dict(id_dict_file, "mrna_id", "gene_id")
 
@@ -123,13 +126,13 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
-    """"""
+    """
     candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-
+    """
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)

@@ -6,6 +6,7 @@ import subprocess
 import ast
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+
 def load_clinker_csv(file_path, output_path):
     data = []
     current_title = None
@@ -540,13 +541,6 @@ def interpro_all_sequences(protein_path, annotation_path):
             result = f.result()
             print(f"[InterPro Done] {result}")
 
-    # old version
-    """for sequence_file in sequence_files:
-        sequence_path = f"{protein_path}/{sequence_file}"
-        annotation_file = f"{annotation_path}/{genomic_region}_protein"
-        annotation_file = interpro_annotation(sequence_path, annotation_file)
-        # annotation_file = f"{annotation_file}.tsv" """
-
 def load_interpro(interpro_file):
     columns = [
         "seq_id", "md5", "length", "source", "domain_info", "domain_name",
@@ -587,11 +581,18 @@ def interpro_data_dict(interpro_data):
         if assembly_id not in interpro_dict:
             interpro_dict[assembly_id] = {}
 
-        interpro_dict[assembly_id][gene] = {
-            "domain_name": "unpredicted" if row["domain_name"] == "-" else row["domain_name"],
-            "ipr_name": "unpredicted" if row["ipr_name"] == "-" else row["ipr_name"],
-            "go_terms": "unpredicted" if row["go_terms"] == ["-"] else row["go_terms"]
-        }
+        # one protein may have multiple domains
+        if gene not in interpro_dict[assembly_id].keys():
+            interpro_dict[assembly_id][gene] = {
+                "domain_name": [],
+                "ipr_name": [],
+                "go_terms": []
+            }
+
+        gene_dict = interpro_dict[assembly_id][gene]
+        gene_dict["domain_name"].append("unpredicted" if row["domain_name"] == "-" else row["domain_name"])
+        gene_dict["ipr_name"].append("unpredicted" if row["ipr_name"] == "-" else row["ipr_name"])
+        gene_dict["go_terms"].append("unpredicted" if row["go_terms"] == "-" else row["go_terms"])
 
     return interpro_dict
 
@@ -785,10 +786,10 @@ def analysis_interpro(comparison_data_path, transformed_data_path, sequence_path
     # transform the data of clinker results
     transform_clinker_results(comparison_data_path, transformed_data_path)
 
-    # extract sequences and prepare annotation using interpro
+    # extract sequences
     candidate_dict = extract_all_sequences(transformed_data_path, sequence_path, protein_path, high_threshold,
                                            basic_threshold, ratio_threhold)
-
+    # prepare annotation using interpro
     interpro_all_sequences(protein_path, annotation_path)
 
     # read the dictionary of gene id
@@ -797,12 +798,164 @@ def analysis_interpro(comparison_data_path, transformed_data_path, sequence_path
     # load annotation results and generate output
     output_annotation_results(candidate_dict, annotation_path, id_dict, final_output)
 
+def extract_domain_info(annotation_data, output_prosite, output_interpro):
+    prosite_list = []
+    interpro_list = []
+    prosite_dict = {}
+    interpro_dict = {}
+
+    for row_dict in annotation_data:
+        prosite_domain = row_dict['domain_name']
+        if prosite_domain == "-":
+            continue
+        prosite_list.append(prosite_domain)
+
+        interpro_name = row_dict['ipr_name']
+        if interpro_name == "-":
+            continue
+        interpro_list.append(interpro_name)
+
+        gene_id = row_dict["seq_id"]
+        if gene_id not in prosite_dict.keys():
+            prosite_dict[gene_id] = []
+        if gene_id not in interpro_dict.keys():
+            interpro_dict[gene_id] = []
+
+        prosite_dict[gene_id].append(prosite_domain)
+        interpro_dict[gene_id].append(interpro_name)
+
+    for gene_id, domain in prosite_dict.items():
+        prosite_dict[gene_id] = list(set(domain))
+
+    for gene_id, domain in interpro_dict.items():
+        interpro_dict[gene_id] = list(set(domain))
+
+    print(list(prosite_dict.values()))
+
+    prosite_list = list(set(prosite_list))
+    interpro_list = list(set(interpro_list))
+
+    with open(output_prosite, "w") as f:
+        for prosite_domain in prosite_list:
+            f.write(prosite_domain + "\n")
+
+    with open(output_interpro, "w") as f:
+        for interpro_domain in interpro_list:
+            f.write(interpro_domain + "\n")
+
+    print(f"prosite domain name file is saved to {output_prosite}")
+    print(f"interpro domain name file is saved to {output_interpro}")
+
+    return prosite_dict, interpro_dict
+
+def extract_genes_by_keywords(
+    excel_file: str,
+    keyword_file: str,
+    output_excel: str,
+    region_col: str = "genomic_region"):
+    """
+    Extract all rows belonging to genomic regions that contain at least one keyword.
+    :param excel_file:
+    :param keyword_file:
+    :param output_excel:
+    :param region_col:
+    :return:
+    """
+    # Read Excel file
+    df = pd.read_excel(excel_file)
+
+    # Build dictionary:
+    # {genomic_region: [row_indices]}
+    region_dict = {}
+    for idx, region in df[region_col].items():
+        region_dict.setdefault(region, []).append(idx)
+
+    # Read keywords from text file
+    with open(keyword_file, "r") as f:
+        keywords = [line.strip() for line in f if line.strip()]
+
+    # Identify genomic regions to extract
+    selected_regions = set()
+
+    for idx, row in df.iterrows():
+        # Convert the entire row to a single string for keyword matching
+        row_text = " ".join(map(str, row.values))
+
+        for kw in keywords:
+            if kw in row_text:
+                selected_regions.add(row[region_col])
+                break
+
+    # Collect all rows for selected regions
+    selected_indices = []
+    for region in selected_regions:
+        selected_indices.extend(region_dict.get(region, []))
+
+    # Remove duplicates and keep original order
+    selected_indices = sorted(set(selected_indices))
+
+    # Write to new Excel file
+    df_selected = df.loc[selected_indices]
+    df_selected.to_excel(output_excel, index=False)
+
+    print(f"Extraction completed: {len(df_selected)} rows written to {output_excel}")
+
+def extract_by_multi_keywords(
+    excel_file: str,
+    prosite_dict: dict,
+    output_excel: str,
+    region_col: str = "genomic_region"):
+    """
+    Extract all rows belonging to genomic regions that contain at least one keyword.
+    :param excel_file:
+    :param keyword_file:
+    :param output_excel:
+    :param region_col:
+    :return:
+    """
+    # Read Excel file
+    df = pd.read_excel(excel_file)
+
+    # Build dictionary:
+    # {genomic_region: [row_indices]}
+    region_dict = {}
+    for idx, region in df[region_col].items():
+        region_dict.setdefault(region, []).append(idx)
+
+    # Read keywords from text file, each is a list
+    keywords = list(prosite_dict.values())
+
+    # Identify genomic regions to extract
+    selected_regions = set()
+
+    for idx, row in df.iterrows():
+        # Convert the entire row to a single string for keyword matching
+        row_text = " ".join(map(str, row.values))
+
+        for keyword_list in keywords:
+            if all(k in row_text for k in keyword_list):
+                selected_regions.add(row[region_col])
+                break
+
+    # Collect all rows for selected regions
+    selected_indices = []
+    for region in selected_regions:
+        selected_indices.extend(region_dict.get(region, []))
+
+    # Remove duplicates and keep original order
+    selected_indices = sorted(set(selected_indices))
+
+    # Write to new Excel file
+    df_selected = df.loc[selected_indices]
+    df_selected.to_excel(output_excel, index=False)
+
+    print(f"Extraction completed: {len(df_selected)} rows written to {output_excel}")
 
 if __name__ == "__main__":
     # Convert to DataFrame
     # data of MAT1-2-4
     species = "aspergillus_fumigatus"
-    #species = "aspergillus_oryzae"
+    species = "aspergillus_oryzae"
     main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
     sequence_path = f"{main_path}/extract_sequences/clinker_interpro"
     result_path = f"{main_path}/results"
@@ -812,7 +965,8 @@ if __name__ == "__main__":
     protein_path = f"{sequence_path}/protein_extraction"
     annotation_path = f"{protein_path}/interpro_annotation"
     excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
-    final_output = f"{result_path}/interpro_annotation.xlsx"
+    summary_output = f"{result_path}/{species}_interpro_annotation.xlsx"
+    #summary_output = f"{result_path}/interpro_annotation.xlsx"
 
     #similarity
     high_threshold = 0.85
@@ -820,13 +974,31 @@ if __name__ == "__main__":
     low_threshold = 0.6
     # query the upstream reference gene.
     ratio_threhold = 0.6
-
+    """
     analysis_interpro(comparison_data_path, transformed_data_path, sequence_path, protein_path, high_threshold,
-                      basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
+                      basic_threshold, ratio_threhold, annotation_path, excel_file, summary_output)
+    """
+    het_analysis = "/lustre/BIF/nobackup/leng010/test/het_domain"
+    het_gene_protein = f"{het_analysis}/het_protein.fa"
+    het_domain_annotation = f"{het_analysis}/het_domain"
+    het_domain_file = f"{het_analysis}/het_domain.tsv"
+    # het_domain_file = interpro_annotation(het_gene_protein, het_domain_annotation)
 
+    annotation_data = load_interpro(het_domain_file)
 
+    domain_prosite = f"{het_analysis}/het_domain_prosite.txt"
+    domain_interpro = f"{het_analysis}/het_domain_interpro.txt"
+    prosite_dict, interpro_dict = extract_domain_info(annotation_data, domain_prosite, domain_interpro)
 
+    domain_keyword_file = domain_prosite
+    output_excel = f"{result_path}/{species}_het_domain.xlsx"
 
+    # if any single keyword appear in a gene, extract it
+    #extract_genes_by_keywords(summary_output, domain_prosite, output_excel, "genomic_region")
+
+    # if any keyword combination appear in a gene, extract it
+    extract_by_multi_keywords(summary_output, prosite_dict, output_excel, "genomic_region")
+    print("saved")
 
 
 

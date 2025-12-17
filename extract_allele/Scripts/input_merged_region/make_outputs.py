@@ -67,11 +67,16 @@ def find_region_gene(candidate_data_summary, annotation_refseq, annotation_augus
             if (region_start <= candidate_start <= region_end) or (region_start <= candidate_end <= region_end):
                 augustus_gene.append(candidate_id)
 
-        summary_genes.append([region_name, refseq_gene, augustus_gene])
+        refseq_gene_str = "|".join(refseq_gene)
+        refseq_gene_num = len(refseq_gene)
+        augustus_gene_str = "|".join(augustus_gene)
+        augustus_gene_num = len(augustus_gene)
+
+        summary_genes.append([region_name, refseq_gene_str, refseq_gene_num, augustus_gene_str, augustus_gene_num])
 
     with open(region_output_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["genomic_region", "RefSeq_genes", "Augustus_genes"])
+        writer.writerow(["genomic_region", "RefSeq_genes","RefSeq_gene_num", "Augustus_genes", "Augustus_gene_num"])
         writer.writerows(summary_genes)
     print(f"Genomic region file written to {region_output_file}")
 
@@ -514,7 +519,7 @@ def find_reference_gene(annotation_sorted, seq, start, end, ID_dict):
         if not ID_dict:
             continue
 
-        CDS_id = ID_dict[annotation_id]
+        CDS_id = ID_dict.get(annotation_id, "not_found")
         CDS_included.append(CDS_id)
 
     return genes_included, CDS_included

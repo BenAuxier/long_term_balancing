@@ -54,11 +54,20 @@ def calculate_average_depth(depth_file, gff_file, output_file):
         seqid = row["seqid"]
         start, end = row["start"], row["end"]
 
+        #test
+        """if not seqid == "NC_036435.1":
+            continue
+        if not start == 1:
+            continue
+        if not end == 5162:
+            continue"""
+
         # Extract intervals from depth data corresponding to chromosomes
         if seqid in depth_groups:
             df = depth_groups[seqid]
             region_depths = df[(df["pos"] >= start) & (df["pos"] <= end)]
-            included_bases = len(region_depths)
+            included_bases = region_depths["pos"].nunique()
+
             if included_bases > 0:
                 avg_depth = region_depths["depth"].mean()
             else:
@@ -71,7 +80,6 @@ def calculate_average_depth(depth_file, gff_file, output_file):
 
     gff_df["average_depth"] = avg_depths
     gff_df["included_bases"] = bases
-
 
     # 保存结果
     gff_df.to_csv(output_file, sep="\t", header=False, index=False)
@@ -147,9 +155,9 @@ def filter_region_length(merged_genomic_region, filtered_genomic_region, minimal
 
     return filtered_genomic_region
 
-def filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region,filtered_region_nucleotides):
+def filter_region_nucleotides_not_used(depth_single_nucleotides, filtered_genomic_region,filtered_region_nucleotides):
     """
-
+    currently not used.
     :param depth_single_nucleotides:
     :param filtered_genomic_region:
     :param filtered_region_nucleotides:
@@ -180,6 +188,52 @@ def filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region,
 
     print(f"Result have been saved to {filtered_region_nucleotides}")
     return filtered_region_nucleotides
+
+def filter_region_nucleotides(depth_file, region_file, output_file):
+    """
+
+    :param depth_file:
+    :param region_file:
+    :param output_file:
+    :return:
+    """
+    regions = {}
+
+    # read regions
+    with open(region_file) as f:
+        for line in f:
+            cols = line.strip().split()
+            if len(cols) < 3:
+                continue  # skip
+            seqid, start, end = cols[0], int(cols[1]), int(cols[2])
+
+            regions.setdefault(seqid, []).append((start, end))
+
+        # merge overlapping BED regions (still 0-based half-open)
+        for seqid in regions:
+            regions[seqid].sort()
+            merged = []
+            for s, e in regions[seqid]:
+                if not merged or s > merged[-1][1]:
+                    merged.append([s, e])
+                else:
+                    merged[-1][1] = max(merged[-1][1], e)
+            regions[seqid] = merged
+
+        # filter depth (depth pos is 1-based)
+        with open(depth_file) as infile, open(output_file, "w") as out:
+            for line in infile:
+                seqid, pos, *_ = line.split()
+                pos = int(pos)
+
+                if seqid not in regions:
+                    continue
+
+                for start, end in regions[seqid]:
+                    # BED [start, end) vs depth 1-based
+                    if start < pos <= end:
+                        out.write(line)
+                        break
 
 def create_filter_region_nucleotides(tmp_path, lower_limit, upper_limit, interval, minimal_length):
     """
@@ -248,19 +302,25 @@ def calculate_depth_all(gene_depth, gene_region_depth, bam_path, main_path, gff_
 
 if __name__ == "__main__":
     base_path = "/lustre/BIF/nobackup/leng010/test"
-    species = "aspergillus_fumigatus"
-    reference_genome = "GCF_000002655.1"
+    species = "aspergillus_oryzae"
+    reference_genome = "GCF_000184455.2"
 
     main_path = f"{base_path}/{species}"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ref_gff_augustus = f"{main_path}/reference_genome/{reference_genome}_genomic_AUGUSTUS.gff"
 
-    depth_single_nucleotides = f"{main_path}/depth_calculation/single_nucleotides_depth.txt"
-    filtered_nucleotides = f"{main_path}/depth_calculation/filtered_nucleotides.bed"
-    merged_genomic_region = f"{main_path}/depth_calculation/merged_genomic_region.bed"
-    filtered_genomic_region = f"{main_path}/depth_calculation/filtered_genomic_region.bed"
-    filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
+    depth_single_nucleotides = f"{main_path}/depth_calculation/tmp/single_nucleotides_depth.txt"
+    filtered_nucleotides = f"{main_path}/depth_calculation/tmp/filtered_nucleotides.bed"
+    merged_genomic_region = f"{main_path}/depth_calculation/tmp/merged_genomic_region.bed"
+    filtered_genomic_region = f"{main_path}/depth_calculation/tmp/filtered_genomic_region.bed"
+    filtered_region_nucleotides = f"{main_path}/depth_calculation/tmp/filtered_region_nucleotides.txt"
     lower_limit = 4
     upper_limit = 6
     minimal_length = 100
     base_interval = "2"
+
+    filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region, filtered_region_nucleotides)
+
+    gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
+    # calculate the average depth of the balancing selection genomic region in each gene
+    calculate_average_depth(filtered_region_nucleotides, ref_gff_augustus, gene_region_depth)

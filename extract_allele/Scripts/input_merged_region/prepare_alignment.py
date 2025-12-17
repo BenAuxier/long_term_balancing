@@ -72,7 +72,7 @@ def download_genomes(main_path,assembly_list, assembly_dir):
                 os.remove(zip_path)
 
     print("\n🎉 All downloads completed successfully.")
-    return assembly_dir, assembly_list
+    return assembly_dir
 
 def process_fna_file(filepath):
     """
@@ -274,11 +274,10 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
 
     return bam_file
 
-def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path, bam_file, reference_genome, assembly_list, augustus_species):
+def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, ref_gff, bam_path, bam_file, reference_genome, assembly_list):
     """"""
-
     # download assemblies
-    assembly_dir, assembly_list = download_genomes(main_path,assembly_list, assembly_dir)
+    download_genomes(main_path,assembly_list, assembly_dir)
     print("assemblies downloaded")
 
     # modify the chromosome name of the assemblies
@@ -287,16 +286,17 @@ def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, r
     # download reference genome
     ref_assembly, ref_gff = download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
 
-    # annotate reference genome with augustus, output gff
-    ref_gff_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix = "_AUGUSTUS")
-
-    # annotate reference genome with augustus, output gff
-    ref_gff3_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="on", suffix="_AUGUSTUS")
-
     # alignment
     align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file)
 
     return bam_path
+
+def prepare_augustus_reference(ref_assembly, augustus_species):
+    # annotate reference genome with augustus, output gff
+    ref_gff_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="off", suffix="_AUGUSTUS")
+
+    # annotate reference genome with augustus, output gff
+    ref_gff3_augustus = run_augustus_on_fasta(ref_assembly, augustus_species, gff3_status="on", suffix="_AUGUSTUS")
 
 
 def run_bedtools_depth(gff_file, main_path, species, reference_genome):
