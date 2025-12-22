@@ -27,6 +27,7 @@ from visualization_clinker import run_clinker_visualization
 from visualization_clinker import run_clinker_data
 from doublecheck_alignment import annotate_file_path
 from load_clinker_csv import analysis_interpro
+from sta_summary import prepare_statistic_data
 
 def run_whole_analysis(reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus, ID_ref_label, ID_augustus_label, key_words, base_path):
     # assembly_list, this file need to create manually
@@ -39,6 +40,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     assembly_dir = f"{main_path}/genome_assemblies"
     ref_path = f"{main_path}/reference_genome"
     ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
+    ref_fai = f"{ref_assembly}.fai"
     gff_refseq = f"{ref_path}/{reference_genome}_genomic.gff"
     gff_refseq_filtered = f"{gff_refseq[:-4]}_{type_annotation_ref}.gff"
     gff_augustus = f"{ref_path}/{reference_genome}_genomic_AUGUSTUS.gff"
@@ -89,10 +91,10 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     identity_visualization = "0.3" # the default identity threshold in visualization
 
     ##########################################################################
-
     # analyze the depth of the genomic regions
     gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
+    base_depth = f"{main_path}/depth_calculation/tmp/single_nucleotides_depth.txt"
     """
     calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
                             lower_limit, upper_limit, base_interval, min_length_region)
@@ -153,8 +155,16 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     print("saving candidate genes")
     result_file = f"{results_path}/{species}_final_candidates.xlsx"
     extract_candidates(candidate_data_summary, result_file, candidate_data,
-                       genome_num,annotation_refseq, CDS_dict)
+                       genome_num,annotation_refseq, CDS_dict, ref_fai)
 
+    #######################################################################
+    statistics_path = f"{main_path}/statistics_data"
+    os.makedirs(statistics_path, exist_ok=True)
+
+    prepare_statistic_data(base_depth, statistics_path, gene_region_depth, result_file, region_output_file)
+
+
+    """
     #######################################################################
     ## extract sequences for clinker visualization
     print("saving candidate genes")
@@ -177,7 +187,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     transformed_data_path = f"{interpro_analysis_path}/transformed_clinker_data"
     protein_path = f"{sequence_visualization}/protein_extraction"
     annotation_path = f"{protein_path}/interpro_annotation"
-    excel_file = f"{main_path}/results/{species}_final_candidates.xlsx"
+    summary_out_file = f"{main_path}/results/{species}_final_candidates.xlsx"
     final_output = f"{results_path}/interpro_annotation.xlsx"
 
     # similarity
@@ -199,8 +209,8 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
 
     analysis_interpro(clinker_data_path, transformed_data_path, sequence_interpro, protein_path, high_threshold,
-                      basic_threshold, ratio_threhold, annotation_path, excel_file, final_output)
-
+                      basic_threshold, ratio_threhold, annotation_path, summary_out_file, final_output)
+    """
 
 import argparse
 

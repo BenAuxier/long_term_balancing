@@ -990,6 +990,9 @@ if __name__ == "__main__":
     domain_interpro = f"{het_analysis}/het_domain_interpro.txt"
     prosite_dict, interpro_dict = extract_domain_info(annotation_data, domain_prosite, domain_interpro)
 
+
+    print(prosite_dict["XP_750596.2"])
+
     domain_keyword_file = domain_prosite
     output_excel = f"{result_path}/{species}_het_domain.xlsx"
 
@@ -997,7 +1000,7 @@ if __name__ == "__main__":
     #extract_genes_by_keywords(summary_output, domain_prosite, output_excel, "genomic_region")
 
     # if any keyword combination appear in a gene, extract it
-    extract_by_multi_keywords(summary_output, prosite_dict, output_excel, "genomic_region")
+    #extract_by_multi_keywords(summary_output, prosite_dict, output_excel, "genomic_region")
     print("saved")
 
 

@@ -72,12 +72,14 @@ def find_region_gene(candidate_data_summary, annotation_refseq, annotation_augus
         augustus_gene_str = "|".join(augustus_gene)
         augustus_gene_num = len(augustus_gene)
 
-        summary_genes.append([region_name, refseq_gene_str, refseq_gene_num, augustus_gene_str, augustus_gene_num])
+        summary_genes.append([region_name, region_seq, region_start, region_end, refseq_gene_str, refseq_gene_num, augustus_gene_str, augustus_gene_num])
 
     with open(region_output_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["genomic_region", "RefSeq_genes","RefSeq_gene_num", "Augustus_genes", "Augustus_gene_num"])
+        writer.writerow(["genomic_region", "region_seq", "region_start", "region_end", "RefSeq_genes",
+                         "RefSeq_gene_num", "Augustus_genes", "Augustus_gene_num"])
         writer.writerows(summary_genes)
+
     print(f"Genomic region file written to {region_output_file}")
 
     all_refseq_genes = list(set(all_refseq_genes))
@@ -524,7 +526,7 @@ def find_reference_gene(annotation_sorted, seq, start, end, ID_dict):
 
     return genes_included, CDS_included
 
-def find_final_candidates(candidate_data_summary, candidate_data, genome_num, annotation_sorted, CDS_dict):
+def find_final_candidates(candidate_data_summary, candidate_data, genome_num, annotation_sorted, CDS_dict, length_dict):
     """
 
     :param candidate_data_summary:
@@ -537,6 +539,7 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
         region_info = summary["position_info"]["position"]
         region_name = summary["region_name"]
         region_seq = region_info["seq_ID"]
+        seq_length = length_dict[region_seq]
         region_start = region_info["start"]
         region_end = region_info["end"]
 
@@ -558,6 +561,7 @@ def find_final_candidates(candidate_data_summary, candidate_data, genome_num, an
                         "RefSeq_CDS": CDS_included,
                         "RefSeq_genes_number": len(CDS_included),
                         "seq_ID": row.get("seq_ID", "."),
+                        "seq_length": seq_length,
                         "start": row.get("start", "."),
                         "end": row.get("end", "."),
                         "gene_length": row["end"]-row["start"],
@@ -599,7 +603,18 @@ def save_final_candidates(final_candidates, output_file):
     print(f"Final candidate data (genes) saved to: {output_file}")
     return output_file
 
-def extract_candidates(candidate_data_summary, output_file, candidate_data, genome_num, annotation_sorted, CDS_dict):
+def calculate_chrom_length(input_fai):
+    length_dict = {}
+    with open(input_fai) as fin:
+        for line in fin:
+            fields = line.rstrip().split("\t")
+            seq = fields[0]
+            length = int(fields[1])
+            length_dict[seq] = length
+
+    return length_dict
+
+def extract_candidates(candidate_data_summary, output_file, candidate_data, genome_num, annotation_sorted, CDS_dict, ref_fai):
     """
 
     :param candidate_data_summary:
@@ -613,9 +628,12 @@ def extract_candidates(candidate_data_summary, output_file, candidate_data, geno
     results_path = os.path.dirname(output_file)
     os.makedirs(results_path, exist_ok=True)
 
+    # calculate the length of each chromosome
+    length_dict = calculate_chrom_length(ref_fai)
+
     # find and save final candidate genes and related information
     final_candidates = find_final_candidates(candidate_data_summary, candidate_data, genome_num,
-                                             annotation_sorted, CDS_dict)
+                                             annotation_sorted, CDS_dict, length_dict)
 
     results_path = save_final_candidates(final_candidates, output_file)
 

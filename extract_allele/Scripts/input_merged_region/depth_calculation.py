@@ -10,7 +10,7 @@ def calculate_base_depth(bam_path,main_path):
     # Ensure output directory exists
     os.makedirs(output_path, exist_ok=True)
 
-    depth_single_nucleotides = f"{output_path}/single_nucleotides_depth.txt"
+    base_depth = f"{output_path}/single_nucleotides_depth.txt"
 
     # Define command as a list for subprocess
     cmd = [
@@ -20,12 +20,12 @@ def calculate_base_depth(bam_path,main_path):
     ]
 
     # Open output file for writing
-    with open(depth_single_nucleotides, "w") as outfile:
+    with open(base_depth, "w") as outfile:
         # Run the command and redirect stdout to the file
         subprocess.run(cmd, stdout=outfile, check=True)
 
-    print(f"depth for each nucleotide are saved to {depth_single_nucleotides}")
-    return depth_single_nucleotides
+    print(f"depth for each nucleotide are saved to {base_depth}")
+    return base_depth
 
 def calculate_average_depth(depth_file, gff_file, output_file):
     """
@@ -50,17 +50,10 @@ def calculate_average_depth(depth_file, gff_file, output_file):
 
     avg_depths = []
     bases = []
+    gene_length = []
     for _, row in gff_df.iterrows():
         seqid = row["seqid"]
         start, end = row["start"], row["end"]
-
-        #test
-        """if not seqid == "NC_036435.1":
-            continue
-        if not start == 1:
-            continue
-        if not end == 5162:
-            continue"""
 
         # Extract intervals from depth data corresponding to chromosomes
         if seqid in depth_groups:
@@ -74,29 +67,28 @@ def calculate_average_depth(depth_file, gff_file, output_file):
                 avg_depth = 0
         else:
             avg_depth = 0
-
         avg_depths.append(avg_depth)
         bases.append(included_bases)
 
     gff_df["average_depth"] = avg_depths
     gff_df["included_bases"] = bases
 
-    # 保存结果
+    # save result
     gff_df.to_csv(output_file, sep="\t", header=False, index=False)
 
-    print(f"✅ Completed: Results have been saved to {output_file}")
+    print(f"Completed: Results have been saved to {output_file}")
     return output_file
 
 
-def filter_depth_to_bed(depth_single_nucleotides, filtered_nucleotides, lower_limit, upper_limit):
+def filter_depth_to_bed(base_depth, filtered_nucleotides, lower_limit, upper_limit):
     """
     Only select the position with depth between lower_limit and upper_limit.
-    input_file: depth_single_nucleotides, f"{main_path}/depth_calculation"
+    input_file: base_depth, f"{main_path}/depth_calculation"
     output_file: filtered_depth_nucleotides
 
     """
 
-    with open(depth_single_nucleotides, "r") as infile, open(filtered_nucleotides, "w") as outfile:
+    with open(base_depth, "r") as infile, open(filtered_nucleotides, "w") as outfile:
         for line in infile:
             chrom, pos, depth = line.strip().split("\t")
             pos = int(pos)
@@ -104,9 +96,9 @@ def filter_depth_to_bed(depth_single_nucleotides, filtered_nucleotides, lower_li
 
             if lower_limit <= depth <= upper_limit:
                 outfile.write(f"{chrom}\t{pos - 1}\t{pos}\n")
-    print(f"Result have been saved to {depth_single_nucleotides}")
+    print(f"Result have been saved to {base_depth}")
 
-    return depth_single_nucleotides
+    return base_depth
 
 def merge_nucleotides(filtered_nucleotides, merged_genomic_region, interval = "1"):
     """
@@ -155,16 +147,16 @@ def filter_region_length(merged_genomic_region, filtered_genomic_region, minimal
 
     return filtered_genomic_region
 
-def filter_region_nucleotides_not_used(depth_single_nucleotides, filtered_genomic_region,filtered_region_nucleotides):
+def filter_region_nucleotides_not_used(base_depth, filtered_genomic_region,filtered_region_nucleotides):
     """
     currently not used.
-    :param depth_single_nucleotides:
+    :param base_depth:
     :param filtered_genomic_region:
     :param filtered_region_nucleotides:
     :return:
     """
     dict_single_nucleotides = {}
-    with open(depth_single_nucleotides, "r") as infile:
+    with open(base_depth, "r") as infile:
         for line in infile:
             nucleotide_cols = line.strip().split()
             # transfer 0 based bed format to 1-based
@@ -190,50 +182,37 @@ def filter_region_nucleotides_not_used(depth_single_nucleotides, filtered_genomi
     return filtered_region_nucleotides
 
 def filter_region_nucleotides(depth_file, region_file, output_file):
-    """
-
-    :param depth_file:
-    :param region_file:
-    :param output_file:
-    :return:
-    """
     regions = {}
 
-    # read regions
+    # 1. read BED region（0-based, [start, end)）
     with open(region_file) as f:
         for line in f:
             cols = line.strip().split()
             if len(cols) < 3:
-                continue  # skip
+                continue
             seqid, start, end = cols[0], int(cols[1]), int(cols[2])
-
             regions.setdefault(seqid, []).append((start, end))
 
-        # merge overlapping BED regions (still 0-based half-open)
-        for seqid in regions:
-            regions[seqid].sort()
-            merged = []
-            for s, e in regions[seqid]:
-                if not merged or s > merged[-1][1]:
-                    merged.append([s, e])
-                else:
-                    merged[-1][1] = max(merged[-1][1], e)
-            regions[seqid] = merged
+    # 2. sort region with start
+    for seqid in regions:
+        regions[seqid].sort()
 
-        # filter depth (depth pos is 1-based)
-        with open(depth_file) as infile, open(output_file, "w") as out:
-            for line in infile:
-                seqid, pos, *_ = line.split()
-                pos = int(pos)
+    # 3. filter depth_file
+    with open(depth_file) as infile, open(output_file, "w") as out:
+        for line in infile:
+            seqid, pos, depth = line.split()
+            pos = int(pos)  # 1-based
 
-                if seqid not in regions:
-                    continue
+            if seqid not in regions:
+                continue
 
-                for start, end in regions[seqid]:
-                    # BED [start, end) vs depth 1-based
-                    if start < pos <= end:
-                        out.write(line)
-                        break
+            # BED [start, end) vs depth 1-based
+            for start, end in regions[seqid]:
+                if start < pos <= end:
+                    out.write(line)
+                    break   # each line only write one time
+
+    print(f"Temporary result of filtered bases are saved to {output_file}")
 
 def create_filter_region_nucleotides(tmp_path, lower_limit, upper_limit, interval, minimal_length):
     """
@@ -247,14 +226,14 @@ def create_filter_region_nucleotides(tmp_path, lower_limit, upper_limit, interva
     :param minimal_length:
     :return:
     """
-    depth_single_nucleotides = f"{tmp_path}/single_nucleotides_depth.txt"
+    base_depth = f"{tmp_path}/single_nucleotides_depth.txt"
     filtered_nucleotides = f"{tmp_path}/filtered_nucleotides.bed"
     merged_genomic_region = f"{tmp_path}/merged_genomic_region.bed"
     filtered_genomic_region = f"{tmp_path}/filtered_genomic_region.bed"
     filtered_region_nucleotides = f"{tmp_path}/filtered_region_nucleotides.txt"
 
     # first select the bases with depth between lower limit and upper limit
-    filter_depth_to_bed(depth_single_nucleotides, filtered_nucleotides, lower_limit, upper_limit)
+    filter_depth_to_bed(base_depth, filtered_nucleotides, lower_limit, upper_limit)
 
     # merge the bases to generate genomic region
     merge_nucleotides(filtered_nucleotides, merged_genomic_region, interval)
@@ -263,7 +242,7 @@ def create_filter_region_nucleotides(tmp_path, lower_limit, upper_limit, interva
     filter_region_length(merged_genomic_region, filtered_genomic_region, minimal_length)
 
     #filter the depth for bases file, only keep those bases overlap with the merged balancing selection regions
-    filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region, filtered_region_nucleotides)
+    filter_region_nucleotides(base_depth, filtered_genomic_region, filtered_region_nucleotides)
 
     return filtered_region_nucleotides
 
@@ -283,11 +262,11 @@ def calculate_depth_all(gene_depth, gene_region_depth, bam_path, main_path, gff_
     :return:
     """
     # first calculate the depth of each base in the reference genome
-    depth_single_nucleotides = calculate_base_depth(bam_path, main_path)
+    base_depth = calculate_base_depth(bam_path, main_path)
 
     # calculate average depth for each gene in the gff file.
     # this is only used for reference gene selection in analyze_all_candidate_position()
-    calculate_average_depth(depth_single_nucleotides, gff_file, gene_depth)
+    calculate_average_depth(base_depth, gff_file, gene_depth)
 
     # select bases in balancing selection region
     tmp_path = f"{main_path}/depth_calculation/tmp"
@@ -302,14 +281,15 @@ def calculate_depth_all(gene_depth, gene_region_depth, bam_path, main_path, gff_
 
 if __name__ == "__main__":
     base_path = "/lustre/BIF/nobackup/leng010/test"
-    species = "aspergillus_oryzae"
-    reference_genome = "GCF_000184455.2"
+    reference_genome = "GCF_000002655.1"  # genome annotation should be GCF version
+    species = "aspergillus_fumigatus"
 
     main_path = f"{base_path}/{species}"
     bam_file = f"{main_path}/alignment/alignment_{species}.sorted.bam"
     ref_gff_augustus = f"{main_path}/reference_genome/{reference_genome}_genomic_AUGUSTUS.gff"
+    gff_augustus_filtered = f"{main_path}/reference_genome/{reference_genome}_genomic_AUGUSTUS_transcript.gff"
 
-    depth_single_nucleotides = f"{main_path}/depth_calculation/tmp/single_nucleotides_depth.txt"
+    base_depth = f"{main_path}/depth_calculation/tmp/single_nucleotides_depth.txt"
     filtered_nucleotides = f"{main_path}/depth_calculation/tmp/filtered_nucleotides.bed"
     merged_genomic_region = f"{main_path}/depth_calculation/tmp/merged_genomic_region.bed"
     filtered_genomic_region = f"{main_path}/depth_calculation/tmp/filtered_genomic_region.bed"
@@ -319,8 +299,8 @@ if __name__ == "__main__":
     minimal_length = 100
     base_interval = "2"
 
-    filter_region_nucleotides(depth_single_nucleotides, filtered_genomic_region, filtered_region_nucleotides)
+    filter_region_nucleotides(base_depth, filtered_genomic_region, filtered_region_nucleotides)
 
     gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
     # calculate the average depth of the balancing selection genomic region in each gene
-    calculate_average_depth(filtered_region_nucleotides, ref_gff_augustus, gene_region_depth)
+    calculate_average_depth(filtered_region_nucleotides, gff_augustus_filtered, gene_region_depth)
