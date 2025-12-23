@@ -228,8 +228,11 @@ def extract_annotations(ref_gff, gff_filtered, type_annotation, key_words):
     print(f"✅ Extracted {count} {type_annotation} entries to {gff_filtered}")
     return gff_filtered
 
+def read_assembly_list(assembly_list_txt):
+    with open(assembly_list_txt) as f:
+        return [line.strip() for line in f if line.strip()]
 
-def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file):
+def align_assemblies_to_reference(assembly_list_txt, ref_assembly, assembly_dir, bam_path, bam_file):
     """
     Align multiple genome assemblies (.fna) to a reference genome using minimap2 and samtools.
 
@@ -242,11 +245,18 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
     # Create output directory if needed
     os.makedirs(bam_path, exist_ok=True)
 
+    assembly_names = read_assembly_list(assembly_list_txt)
+
     # Find all .fna files
-    assembly_files = sorted(
+    all_files = sorted(
         glob.glob(os.path.join(assembly_dir, "*.fna")) +
         glob.glob(os.path.join(assembly_dir, "*.fa"))
     )
+
+    assembly_files = [
+        f for f in all_files
+        if any(name in os.path.basename(f) for name in assembly_names)
+    ]
 
     if not assembly_files:
         print(f"❌ No .fna or .fa files found in {assembly_dir}")
@@ -262,7 +272,7 @@ def align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file
         f"| samtools sort -o {bam_file}"
     )
 
-    print(f"\n🚀 Running alignment pipeline...\n{cmd}\n")
+    print(f"\n🚀 Running alignment pipeline using {len(assembly_files)} assemblies...\n")
 
     # Run pipeline in shell
     subprocess.run(cmd, shell=True, check=True)
@@ -287,7 +297,7 @@ def prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, r
     ref_assembly, ref_gff = download_reference_genome(reference_genome, ref_path, ref_assembly, ref_gff)
 
     # alignment
-    align_assemblies_to_reference(ref_assembly, assembly_dir, bam_path, bam_file)
+    align_assemblies_to_reference(assembly_list, ref_assembly, assembly_dir, bam_path, bam_file)
 
     return bam_path
 

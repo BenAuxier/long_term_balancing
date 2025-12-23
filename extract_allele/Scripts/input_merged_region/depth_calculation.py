@@ -56,6 +56,9 @@ def calculate_average_depth(depth_file, gff_file, output_file):
         start, end = row["start"], row["end"]
 
         # Extract intervals from depth data corresponding to chromosomes
+        avg_depth = 0
+        included_bases = 0
+
         if seqid in depth_groups:
             df = depth_groups[seqid]
             region_depths = df[(df["pos"] >= start) & (df["pos"] <= end)]
@@ -63,10 +66,10 @@ def calculate_average_depth(depth_file, gff_file, output_file):
 
             if included_bases > 0:
                 avg_depth = region_depths["depth"].mean()
-            else:
-                avg_depth = 0
-        else:
-            avg_depth = 0
+            #else:
+                #avg_depth = 0
+        #else:
+            #avg_depth = 0
         avg_depths.append(avg_depth)
         bases.append(included_bases)
 
