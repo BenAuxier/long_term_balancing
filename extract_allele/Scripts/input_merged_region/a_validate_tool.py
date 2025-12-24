@@ -5,6 +5,7 @@ Extract the allele of each gene in multiple genomes
 import os
 import argparse
 import subprocess
+import csv
 
 from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import prepare_augustus_reference
@@ -34,6 +35,19 @@ from sta_summary import prepare_statistic_data
 
 import random
 import warnings
+
+def read_non_empty_lines(txt_path):
+    """
+    Read non-empty lines from a txt file and return a list.
+    """
+    lines = []
+    with open(txt_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                lines.append(line)
+    return lines
+
 
 def sample_nonempty_lines(
     input_txt,
@@ -112,12 +126,10 @@ def loop_whole_analysis(genome_number, replication, reference_genome, species, a
                                ID_ref_label, ID_augustus_label,
                                key_words, base_path, path_replication)
 
-            alignment_path = f"{base_path}/{species}/alignment"
+            alignment_path = f"{path_replication}/alignment"
 
             cmd = ["rm", "-r", alignment_path]
             subprocess.run(cmd)
-
-
 
 def run_whole_analysis(assembly_random, reference_genome, species, augustus_species,
                        type_annotation_ref, type_annotation_augustus,
@@ -252,7 +264,48 @@ def run_whole_analysis(assembly_random, reference_genome, species, augustus_spec
     prepare_statistic_data(base_depth, statistics_path, gene_depth, gene_region_depth, result_file,
                            region_output_file, assembly_random, refseq_candidate_file)
 
+def collect_gene_data(genome_number, replication, test_path, complete_gene_list, output_file):
 
+    all_genes = read_non_empty_lines(complete_gene_list)
+    num_all_genes = len(all_genes)
+    all_statis = []
+
+    for number_test in genome_number:
+        test_path_case = f"{test_path}/{number_test}_genomes"
+
+        for i in range(replication):
+            replication_number = i + 1
+            path_replication = f"{test_path_case}/replication_{replication_number}"
+            gene_test = f"{path_replication}/statistics_data/all_candidate_genes.txt"
+            test_list = read_non_empty_lines(gene_test)
+
+            # number of genes found in the replication
+            detected_genes = len(test_list)
+            intersection_true = list(set(all_genes) & set(test_list))
+
+            # True results
+            true_genes = len(intersection_true)
+
+            # False negative
+            only_in_all = list(set(all_genes) - set(test_list))
+            false_negative = len(only_in_all)
+
+            # False positive
+            only_in_case = list(set(test_list) - set(all_genes))
+            false_positive = len(only_in_case)
+
+            all_statis.append([number_test, replication_number, num_all_genes, detected_genes,
+                               true_genes, false_positive, false_negative])
+
+    header = ["Assembly_number", "Replication", "Total bs genes", "Detected genes",
+              "Detected true bs genes", "False positive", "False negative"]
+
+    with open(output_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(all_statis)
+
+    print(f"Summary are saved to {output_file}")
 
 
 if __name__ == "__main__":
@@ -317,10 +370,10 @@ if __name__ == "__main__":
 
 
 
-    genome_number = [5, 10, 15, 20, 30, 50, 75, 100, 150, 200]
+    genome_number = [5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300]
     # test
-    genome_number = [4, 6, 10]
-    replication = 2
+    #genome_number = [5, 10, 20, 40, 80, 160]
+    replication = 12
 
     loop_whole_analysis(
         genome_number, replication,
@@ -335,7 +388,14 @@ if __name__ == "__main__":
         args.base_path
     )
 
+    species = args.species
+    #species = "aspergillus_fumigatus"
+    test_path = f"/lustre/BIF/nobackup/leng010/test/{species}_test"
+    complete_gene_list = f"/lustre/BIF/nobackup/leng010/test/{species}/results/statistics_data/all_candidate_genes.txt"
 
+    test_summary = f"{test_path}/test_summary.csv"
+
+    collect_gene_data(genome_number, replication, test_path, complete_gene_list, test_summary)
 
 
 
