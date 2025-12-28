@@ -32,6 +32,8 @@ from visualization_clinker import run_clinker_data
 from doublecheck_alignment import annotate_file_path
 from load_clinker_csv import analysis_interpro
 from sta_summary import prepare_statistic_data
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 import random
 import warnings
@@ -95,7 +97,7 @@ def sample_nonempty_lines(
         for line in selected:
             out.write(line + "\n")
 
-def loop_whole_analysis(genome_number, replication, reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus,
+def loop_whole_analysis_old(genome_number, replication, reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus,
                        ID_ref_label, ID_augustus_label, key_words, base_path):
     # with all assemblies
     assembly_list = f"{base_path}/genome_accessions/{species}.txt"
@@ -130,6 +132,77 @@ def loop_whole_analysis(genome_number, replication, reference_genome, species, a
 
             cmd = ["rm", "-r", alignment_path]
             subprocess.run(cmd)
+
+
+def run_one_case(number_test, replication_number,
+                 test_path, replication, species,
+                 assembly_list, reference_genome,
+                 augustus_species, type_annotation_ref,
+                 type_annotation_augustus,
+                 ID_ref_label, ID_augustus_label,
+                 key_words, base_path):
+
+    print(f"Analyzing [{number_test}] genome assemblies "
+          f"with replication [{replication_number}/{replication}].")
+
+    # create paths
+    test_path_case = f"{test_path}/{number_test}_genomes"
+    os.makedirs(test_path_case, exist_ok=True)
+
+    path_replication = f"{test_path_case}/replication_{replication_number}"
+    os.makedirs(path_replication, exist_ok=True)
+
+    assembly_random = f"{path_replication}/{species}_{number_test}_{replication_number}.txt"
+
+    sample_nonempty_lines(
+        assembly_list, assembly_random, number_test, None
+    )
+
+    run_whole_analysis(
+        assembly_random, reference_genome, species,
+        augustus_species, type_annotation_ref,
+        type_annotation_augustus,
+        ID_ref_label, ID_augustus_label,
+        key_words, base_path, path_replication
+    )
+
+    alignment_path = f"{path_replication}/alignment"
+    subprocess.run(["rm", "-r", alignment_path], check=False)
+
+def loop_whole_analysis(genome_number, replication, reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus,
+                       ID_ref_label, ID_augustus_label, key_words, base_path):
+    # with all assemblies
+    assembly_list = f"{base_path}/genome_accessions/{species}.txt"
+
+    test_path = f"/lustre/BIF/nobackup/leng010/test/{species}_test"
+    os.makedirs(test_path, exist_ok=True)
+
+    max_threads = 4
+
+    tasks = []
+
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        for number_test in genome_number:
+            for i in range(replication):
+                replication_number = i + 1
+
+                future = executor.submit(
+                    run_one_case,
+                    number_test, replication_number,
+                    test_path, replication, species,
+                    assembly_list, reference_genome,
+                    augustus_species, type_annotation_ref,
+                    type_annotation_augustus,
+                    ID_ref_label, ID_augustus_label,
+                    key_words, base_path
+                )
+                tasks.append(future)
+
+        for future in as_completed(tasks):
+            try:
+                future.result()
+            except Exception as e:
+                print("Task failed:", e)
 
 def run_whole_analysis(assembly_random, reference_genome, species, augustus_species,
                        type_annotation_ref, type_annotation_augustus,
@@ -264,10 +337,11 @@ def run_whole_analysis(assembly_random, reference_genome, species, augustus_spec
     prepare_statistic_data(base_depth, statistics_path, gene_depth, gene_region_depth, result_file,
                            region_output_file, assembly_random, refseq_candidate_file)
 
-def collect_gene_data(genome_number, replication, test_path, complete_gene_list, output_file):
+def collect_gene_data(gene_num, genome_number, replication, test_path, complete_gene_list, output_file):
 
-    all_genes = read_non_empty_lines(complete_gene_list)
-    num_all_genes = len(all_genes)
+
+    BS_genes = read_non_empty_lines(complete_gene_list)
+    num_BS_genes = len(BS_genes)
     all_statis = []
 
     for number_test in genome_number:
@@ -281,24 +355,41 @@ def collect_gene_data(genome_number, replication, test_path, complete_gene_list,
 
             # number of genes found in the replication
             detected_genes = len(test_list)
-            intersection_true = list(set(all_genes) & set(test_list))
+            intersection_true = list(set(BS_genes) & set(test_list))
 
             # True results
-            true_genes = len(intersection_true)
+            true_positive = len(intersection_true)
 
             # False negative
-            only_in_all = list(set(all_genes) - set(test_list))
+            only_in_all = list(set(BS_genes) - set(test_list))
             false_negative = len(only_in_all)
 
             # False positive
-            only_in_case = list(set(test_list) - set(all_genes))
+            only_in_case = list(set(test_list) - set(BS_genes))
             false_positive = len(only_in_case)
 
-            all_statis.append([number_test, replication_number, num_all_genes, detected_genes,
-                               true_genes, false_positive, false_negative])
+            #True negative
+            true_negative = gene_num - num_BS_genes
 
-    header = ["Assembly_number", "Replication", "Total bs genes", "Detected genes",
-              "Detected true bs genes", "False positive", "False negative"]
+            # sensitivity
+            sensitivity = true_positive/num_BS_genes
+
+            # False Negative Rate (FNR)
+            fnr = false_negative/num_BS_genes
+
+            # False discovery rate (FDR)
+            fdr = false_positive / num_BS_genes
+
+            # False Positive Rate (FPR)
+            fpr = false_positive / (false_positive + true_negative)
+
+            all_statis.append([number_test, replication_number,
+                               true_positive, false_positive, true_negative, false_negative,
+                               sensitivity, fnr, fdr, fpr])
+
+    header = ["Assembly_number", "Replication",
+              "TP", "FP", "TN", "FN",
+              "Sensitivity", "FNR", "FDR", "FPR"]
 
     with open(output_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -309,6 +400,7 @@ def collect_gene_data(genome_number, replication, test_path, complete_gene_list,
 
 
 if __name__ == "__main__":
+    """"""
     parser = argparse.ArgumentParser(
         description="Run whole genome annotation analysis"
     )
@@ -370,11 +462,12 @@ if __name__ == "__main__":
 
 
 
-    genome_number = [5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300]
+    genome_number = [10, 15, 20, 30, 50, 75, 100, 150, 200, 250, 300]
     # test
     #genome_number = [5, 10, 20, 40, 80, 160]
     replication = 12
 
+    """"""
     loop_whole_analysis(
         genome_number, replication,
         args.reference_genome,
@@ -389,13 +482,28 @@ if __name__ == "__main__":
     )
 
     species = args.species
-    #species = "aspergillus_fumigatus"
+    reference_genome = args.reference_genome
+
     test_path = f"/lustre/BIF/nobackup/leng010/test/{species}_test"
     complete_gene_list = f"/lustre/BIF/nobackup/leng010/test/{species}/results/statistics_data/all_candidate_genes.txt"
 
     test_summary = f"{test_path}/test_summary.csv"
 
-    collect_gene_data(genome_number, replication, test_path, complete_gene_list, test_summary)
+    main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
+
+    ref_path = f"{main_path}/reference_genome"
+    ref_assembly = f"{ref_path}/{reference_genome}_genomic.fna"
+    ref_fai = f"{ref_assembly}.fai"
+    gff_refseq = f"{ref_path}/{reference_genome}__AUGUSTUS_transcript.gff"
+
+    gff_refseq_filtered = f"{main_path}/reference_genome/{reference_genome}_genomic_{args.type_annotation_ref}.gff"
+
+    refseq_genes = read_non_empty_lines(gff_refseq_filtered)
+    num_refseq_genes = len(refseq_genes)
+    print(num_refseq_genes)
+
+
+    collect_gene_data(num_refseq_genes, genome_number, replication, test_path, complete_gene_list, test_summary)
 
 
 

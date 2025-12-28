@@ -4,6 +4,7 @@ Extract the allele of each gene in multiple genomes
 """
 import os
 import argparse
+import subprocess
 
 from prepare_alignment import prepare_analyze_alignment
 from prepare_alignment import prepare_augustus_reference
@@ -55,9 +56,12 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     """
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, gff_refseq, bam_path,
                               bam_file, reference_genome, assembly_list)
-    
-    prepare_augustus_reference(ref_assembly, augustus_species)
     """
+    prepare_augustus_reference(ref_assembly, augustus_species)
+
+    subprocess.run(["samtools", "faidx", ref_assembly])
+
+
     # filter the annotation with type_annotation
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
     gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
@@ -155,6 +159,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     ## save final candidate genes to an Excel file
     print("saving candidate genes")
     result_file = f"{results_path}/{species}_final_candidates.xlsx"
+
     extract_candidates(candidate_data_summary, result_file, candidate_data,
                        genome_num,annotation_refseq, CDS_dict, ref_fai)
 
@@ -165,8 +170,6 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     prepare_statistic_data(base_depth, statistics_path, gene_depth, gene_region_depth, result_file,
                            region_output_file, assembly_list, refseq_candidate_file)
 
-
-    """
     #######################################################################
     ## extract sequences for clinker visualization
     print("saving candidate genes")
@@ -212,9 +215,7 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     analysis_interpro(clinker_data_path, transformed_data_path, sequence_interpro, protein_path, high_threshold,
                       basic_threshold, ratio_threhold, annotation_path, summary_out_file, final_output)
-    """
-
-
+    """"""
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
