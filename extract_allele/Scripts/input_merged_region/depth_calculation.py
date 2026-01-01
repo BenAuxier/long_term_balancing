@@ -70,6 +70,7 @@ def calculate_average_depth(depth_file, gff_file, output_file):
                 #avg_depth = 0
         #else:
             #avg_depth = 0
+
         avg_depths.append(avg_depth)
         bases.append(included_bases)
 

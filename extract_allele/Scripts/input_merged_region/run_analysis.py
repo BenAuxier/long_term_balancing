@@ -31,10 +31,12 @@ from doublecheck_alignment import annotate_file_path
 from load_clinker_csv import analysis_interpro
 from sta_summary import prepare_statistic_data
 
-def run_whole_analysis(reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus, ID_ref_label, ID_augustus_label, key_words, base_path):
+
+def run_whole_analysis(reference_genome, species, augustus_species, type_annotation_ref, type_annotation_augustus,
+                       ID_ref_label, ID_augustus_label, key_words, base_path):
     # assembly_list, this file need to create manually
     assembly_list = f"{base_path}/genome_accessions/{species}.txt"
-    #assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
+    # assembly_list = f"{base_path}/genome_accessions/{species}_test.txt"
 
     ##########################################################################
     # path to specific species
@@ -53,19 +55,18 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     filtered_region_nucleotides = f"{main_path}/depth_calculation/filtered_region_nucleotides.txt"
 
     ##########################################################################################
-    """
+    """"""
     prepare_analyze_alignment(main_path, assembly_dir, ref_path, ref_assembly, gff_refseq, bam_path,
                               bam_file, reference_genome, assembly_list)
-    """
+
     prepare_augustus_reference(ref_assembly, augustus_species)
 
     subprocess.run(["samtools", "faidx", ref_assembly])
 
-
     # filter the annotation with type_annotation
     gff_refseq_filtered = extract_annotations(gff_refseq, gff_refseq_filtered, type_annotation_ref, key_words)
-    gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus, key_words)
-
+    gff_augustus_filtered = extract_annotations(gff_augustus, gff_augustus_filtered, type_annotation_augustus,
+                                                key_words)
 
     # verify some basic details
     # check reference annotation .gff file
@@ -89,27 +90,28 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     min_length_gene = 300  # the minimal length of candidate gene
     transfer_id = True  # whether transfer genomic region name to CDS ID
 
-    min_length_region = 200 # the minimal length of the genomic region merged in "calculate_depth_all"
-    base_interval = "2" # the max interval between merged base
-    min_overlap = 100 # the minimal length a candidate gene overlap with balancing selection region
+    min_length_region = 200  # the minimal length of the genomic region merged in "calculate_depth_all"
+    base_interval = "2"  # the max interval between merged base
+    min_overlap = 100  # the minimal length a candidate gene overlap with balancing selection region
 
-    identity_visualization = "0.3" # the default identity threshold in visualization
+    identity_visualization = "0.3"  # the default identity threshold in visualization
 
     ##########################################################################
     # analyze the depth of the genomic regions
-    gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
-    gene_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
+    all_gene_depth = f"{main_path}/depth_calculation/mean_depth_gene.txt"
+    gene_bs_region_depth = f"{main_path}/depth_calculation/mean_depth_region.txt"
     base_depth = f"{main_path}/depth_calculation/tmp/single_nucleotides_depth.txt"
     """"""
-    calculate_depth_all(gene_depth, gene_region_depth, bam_file, main_path, gff_augustus_filtered,
-                            lower_limit, upper_limit, base_interval, min_length_region)
-
+    calculate_depth_all(all_gene_depth, gene_bs_region_depth, bam_file, main_path, gff_augustus_filtered,
+                        lower_limit, upper_limit, base_interval, min_length_region)
 
     # load annotation data from gff annotation
-    annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label, type_annotation_ref)
-    annotation_augustus, annotation_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label, type_annotation_augustus)
+    annotation_refseq, annotation_dict_refseq = load_annotation_refseq(gff_refseq_filtered, ID_ref_label,
+                                                                       type_annotation_ref)
+    annotation_augustus, annotation_dict_augustus = load_annotation_augustus(gff_augustus_filtered, ID_augustus_label,
+                                                                             type_annotation_augustus)
 
-    #print(annotation_refseq)
+    # print(annotation_refseq)
     CDS_dict = False
     # dictionary between locus_tag and CDS (XM) ID
     id_dict_file = f"{ref_path}/{reference_genome}_id_dict.csv"
@@ -122,24 +124,23 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     # processes the input candidate mRNAs
     print("loading candidate data")
-    gene_depth_data = process_data_augustus(gene_depth, ID_augustus_label)
+    all_gene_depth_data = process_data_augustus(all_gene_depth, ID_augustus_label)
 
     print("merging candidate data")
-    candidate_data, candidate_merge = process_merging(gene_region_depth, ID_augustus_label, lower_limit, upper_limit,
-                                                    annotation_dict_augustus, min_length_gene, min_overlap)
+    candidate_data, candidate_merge = process_merging(gene_bs_region_depth, ID_augustus_label, lower_limit, upper_limit,
+                                                      annotation_dict_augustus, min_length_gene, min_overlap)
 
-    #test
-    #candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
+    # test
+    # candidate_merge = {"NC_007196.1": candidate_merge["NC_007196.1"]}
 
     print("analyzing candidate data")
     output_json = f"{main_path}/temp/candidate_data_summary.json"
     """"""
-    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, gene_depth_data,
+    candidate_data_summary = analyze_all_candidate_position(candidate_merge, annotation_augustus, all_gene_depth_data,
                                                             bam_file, assembly_list, up_num, down_num, lower_limit,
                                                             minimal_alignment, type_annotation_ref)
     # save tmp file for candidate_data_summary
     save_json(candidate_data_summary, output_json)
-
 
     # reload candidate_data_summary
     candidate_data_summary = load_json(output_json)
@@ -161,13 +162,13 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     result_file = f"{results_path}/{species}_final_candidates.xlsx"
 
     extract_candidates(candidate_data_summary, result_file, candidate_data,
-                       genome_num,annotation_refseq, CDS_dict, ref_fai)
+                       genome_num, annotation_refseq, CDS_dict, ref_fai)
 
     #######################################################################
     statistics_path = f"{main_path}/statistics_data"
     os.makedirs(statistics_path, exist_ok=True)
 
-    prepare_statistic_data(base_depth, statistics_path, gene_depth, gene_region_depth, result_file,
+    prepare_statistic_data(base_depth, statistics_path, gene_bs_region_depth, all_gene_depth, result_file,
                            region_output_file, assembly_list, refseq_candidate_file)
 
     #######################################################################
@@ -179,8 +180,8 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
 
     """"""
     extract_sequences(candidate_data_summary, reference_genome, gff_refseq, gff3_augustus,
-                    sequence_visualization, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
-    
+                      sequence_visualization, extend, ref_assembly, assembly_dir, assembly_num, augustus_species)
+
     # run clinker for visualization
     print("running clinker")
     run_clinker_visualization(sequence_visualization, clinker_output_path, identity_visualization)
@@ -209,13 +210,14 @@ def run_whole_analysis(reference_genome, species, augustus_species, type_annotat
     extract_sequences_interpro(sequence_interpro, candidate_data_summary,
                                sequence_visualization, extend, assembly_dir,
                                additional_assembly, augustus_species)
-    
+
     # run clinker for comparison data
     run_clinker_data(sequence_interpro, clinker_data_path, "0.01")
 
     analysis_interpro(clinker_data_path, transformed_data_path, sequence_interpro, protein_path, high_threshold,
                       basic_threshold, ratio_threhold, annotation_path, summary_out_file, final_output)
     """"""
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -467,7 +467,7 @@ if __name__ == "__main__":
     #genome_number = [5, 10, 20, 40, 80, 160]
     replication = 12
 
-    """"""
+    """
     loop_whole_analysis(
         genome_number, replication,
         args.reference_genome,
@@ -480,14 +480,15 @@ if __name__ == "__main__":
         args.key_words,
         args.base_path
     )
+    """
 
     species = args.species
     reference_genome = args.reference_genome
 
     test_path = f"/lustre/BIF/nobackup/leng010/test/{species}_test"
-    complete_gene_list = f"/lustre/BIF/nobackup/leng010/test/{species}/results/statistics_data/all_candidate_genes.txt"
+    complete_gene_list = f"/lustre/BIF/nobackup/leng010/test/{species}/statistics_data/all_candidate_genes.txt"
 
-    test_summary = f"{test_path}/test_summary.csv"
+    test_summary = f"{test_path}/{species}_test_summary.csv"
 
     main_path = f"/lustre/BIF/nobackup/leng010/test/{species}"
 
